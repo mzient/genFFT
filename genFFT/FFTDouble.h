@@ -73,7 +73,7 @@ inline void store(double *addr, double4 v)
 
 inline __m128d flip_even(__m128d a)
 {
-    const __m128d signmask = _mm_castsi128_pd(_mm_set_epi64x(0, -1ll<<63));
+    const __m128d signmask = _mm_castsi128_pd(_mm_set_epi64x(0, 1ull<<63));
     return _mm_xor_pd(a, signmask);
 }
 

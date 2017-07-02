@@ -24,8 +24,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef FFTLEVEL_H
-#define FFTLEVEL_H
+#ifndef GEN_FFT_LEVEL_H
+#define GEN_FFT_LEVEL_H
 
 #if (defined(_OPENMP) && (_OPENMP >= 201307L)) || (defined(_OPENMP_SIMD) && (_OPENMP_SIMD >= 201307L))
 #define FFT_OPENMP_SIMD
@@ -481,5 +481,5 @@ std::weak_ptr<FFTVertLevel<N, T>> FFTVertLevel<N, T>::instance;
 } // impl
 } // genfft
 
-#endif /* FFTLEVEL_H */
+#endif /* GEN_FFT_LEVEL_H */
 
