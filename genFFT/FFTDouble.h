@@ -125,8 +125,8 @@ struct FFTDouble<N, true>
     template <bool inv>
     void transform(double *data)
     {
-        next.transform<inv>(data);
-        next.transform<inv>(data+N);
+        next.template transform<inv>(data);
+        next.template transform<inv>(data+N);
 
 #ifdef __AVX__
         for (unsigned i=0; i<N; i+=4)

@@ -279,8 +279,8 @@ struct FFTVertFloat<N, true>
     void transform(float *data, int stride, int cols)
     {
         int half = N/2 * stride;
-        next.transform<inv>(data,      stride, cols);
-        next.transform<inv>(data+half, stride, cols);
+        next.template transform<inv>(data,      stride, cols);
+        next.template transform<inv>(data+half, stride, cols);
 
         for (unsigned i=0; i<N/2; i++)
         {
