@@ -56,8 +56,8 @@ template <int N, class T>
 struct FFTImpl : FFTBase<T>, FFTImplSelector<N, T>::type
 {
     typedef typename FFTImplSelector<N, T>::type Impl;
-    void forward(T *data) override { return Impl::forward(data); }
-    void inverse(T *data) override { return Impl::inverse(data); }
+    void forward(T *data) override { Impl::template transform<false>(data); }
+    void inverse(T *data) override { Impl::template transform<true>(data); }
 };
 
 template <int N, class T>
@@ -67,10 +67,11 @@ template <int N, class T>
 struct FFTGeneric
 {
     FFTLevel<N/2, T> next;
-    void forward(T *data)
+    template <bool inv>
+    void transform(T *data)
     {
-        next.forward(data);
-        next.forward(data+N);
+        next.template transform<inv>(data);
+        next.template transform<inv>(data+N);
 
         T tempr, tempi;
 
@@ -81,30 +82,8 @@ struct FFTGeneric
         {
             T wr = twiddle[i];
             T wi = twiddle[i+1];
-            tempr = data[i+N]*wr - data[i+N+1]*wi;
-            tempi = data[i+N]*wi + data[i+N+1]*wr;
-            data[i+N]   = data[i]-tempr;
-            data[i+N+1] = data[i+1]-tempi;
-            data[i]     += tempr;
-            data[i+1]   += tempi;
-        }
-    }
-    void inverse(T *data)
-    {
-        next.inverse(data);
-        next.inverse(data+N);
-
-        T tempr, tempi;
-
-#ifdef FFT_OPENMP_SIMD
-        #pragma omp simd
-#endif
-        for (unsigned i=0; i<N; i+=2)
-        {
-            T wr = twiddle[i];
-            T wi = twiddle[i+1];
-            tempr = data[i+N]*wr + data[i+N+1]*wi;
-            tempi = data[i+N+1]*wr - data[i+N]*wi;
+            tempr = inv ? data[i+N]*wr + data[i+N+1]*wi : data[i+N]*wr - data[i+N+1]*wi;
+            tempi = inv ? data[i+N+1]*wr - data[i+N]*wi : data[i+N]*wi + data[i+N+1]*wr;
             data[i+N]   = data[i]-tempr;
             data[i+N+1] = data[i+1]-tempi;
             data[i]     += tempr;
@@ -119,7 +98,8 @@ struct FFTGeneric
 template <class T>
 struct FFTGeneric<4, T>
 {
-    void forward(T *data)
+    template <bool inv>
+    void transform(T *data)
     {
         T tr = data[2];
         T ti = data[3];
@@ -129,36 +109,8 @@ struct FFTGeneric<4, T>
         data[1] += ti;
         tr = data[6];
         ti = data[7];
-        data[6] = data[5]-ti;
-        data[7] = tr-data[4];
-        data[4] += tr;
-        data[5] += ti;
-
-        tr = data[4];
-        ti = data[5];
-        data[4] = data[0]-tr;
-        data[5] = data[1]-ti;
-        data[0] += tr;
-        data[1] += ti;
-        tr = data[6];
-        ti = data[7];
-        data[6] = data[2]-tr;
-        data[7] = data[3]-ti;
-        data[2] += tr;
-        data[3] += ti;
-    }
-    void inverse(T *data)
-    {
-        T tr = data[2];
-        T ti = data[3];
-        data[2] = data[0]-tr;
-        data[3] = data[1]-ti;
-        data[0] += tr;
-        data[1] += ti;
-        tr = data[6];
-        ti = data[7];
-        data[6] = ti-data[5];
-        data[7] = data[4]-tr;
+        data[6] = inv ? ti-data[5] : data[5]-ti;
+        data[7] = inv ? data[4]-tr : tr-data[4];
         data[4] += tr;
         data[5] += ti;
 
@@ -180,7 +132,8 @@ struct FFTGeneric<4, T>
 template <class T>
 struct FFTGeneric<2, T>
 {
-    void forward(T *data)
+    template <bool inv_unused>
+    void transform(T *data)
     {
         T tr = data[2];
         T ti = data[3];
@@ -189,17 +142,13 @@ struct FFTGeneric<2, T>
         data[0] += tr;
         data[1] += ti;
     }
-    void inverse(T *data)
-    {
-        forward(data);
-    }
 };
 
 template <class T>
 struct FFTGeneric<1, T>
 {
-    void forward(T *) {}
-    void inverse(T *) {}
+    template <bool inv_unused>
+    void transform(T *) {}
 };
 
 template <int N, class T>
@@ -257,8 +206,8 @@ template <int N, class T>
 struct FFTVertImpl : FFTVertBase<T>, FFTVertImplSelector<N, T>::type
 {
     typedef typename FFTVertImplSelector<N, T>::type Impl;
-    void forward(T *data, int stride, int columns) override { return Impl::forward(data, stride, columns); }
-    void inverse(T *data, int stride, int columns) override { return Impl::inverse(data, stride, columns); }
+    void forward(T *data, int stride, int columns) override { return Impl::template transform<false>(data, stride, columns); }
+    void inverse(T *data, int stride, int columns) override { return Impl::template transform<true>(data, stride, columns); }
 };
 
 
@@ -269,11 +218,13 @@ template <int N, class T>
 struct FFTVertGeneric
 {
     FFTVertLevel<N/2, T> next;
-    void forward(T *data, int stride, int columns)
+
+    template <bool inv>
+    void transform(T *data, int stride, int columns)
     {
         const int half = N/2*stride;
-        next.forward(data,      stride, columns);
-        next.forward(data+half, stride, columns);
+        next.template transform<inv>(data,      stride, columns);
+        next.template transform<inv>(data+half, stride, columns);
 
         for (unsigned i=0; i<N/2; i++)
         {
@@ -286,34 +237,9 @@ struct FFTVertGeneric
 #endif
             for (int j=0; j<2*columns; j+=2)
             {
-                T tempr = odd[j]*wr - odd[j+1]*wi;
-                T tempi = odd[j]*wi + odd[j+1]*wr;
-                odd[j]    = even[j]-tempr;
-                odd[j+1]  = even[j+1]-tempi;
-                even[j]   += tempr;
-                even[j+1] += tempi;
-            }
-        }
-    }
-    void inverse(T *data, int stride, int columns)
-    {
-        const int half = N/2*stride;
-        next.inverse(data,      stride, columns);
-        next.inverse(data+half, stride, columns);
-
-        for (unsigned i=0; i<N/2; i++)
-        {
-            T wr = twiddle[2*i];
-            T wi = twiddle[2*i+1];
-            T *even = data + i*stride;
-            T *odd =  even + half;
-#ifdef FFT_OPENMP_SIMD
-            #pragma omp simd
-#endif
-            for (int j=0; j<2*columns; j+=2)
-            {
-                T tempr = odd[j]*wr + odd[j+1]*wi;
-                T tempi = odd[j+1]*wr - odd[j]*wi;
+                T tempr, tempi;
+                tempr = inv ? odd[j]*wr + odd[j+1]*wi : odd[j]*wr - odd[j+1]*wi;
+                tempi = inv ? odd[j+1]*wr - odd[j]*wi : odd[j+1]*wr + odd[j]*wi;
                 odd[j]    = even[j]-tempr;
                 odd[j+1]  = even[j+1]-tempi;
                 even[j]   += tempr;
@@ -329,7 +255,8 @@ struct FFTVertGeneric
 template <class T>
 struct FFTVertGeneric<4, T>
 {
-    void forward(T *data, int stride, int cols)
+    template <bool inv>
+    void transform(T *data, int stride, int cols)
     {
         T *row0 = data;
         T *row1 = row0+stride;
@@ -349,47 +276,8 @@ struct FFTVertGeneric<4, T>
             row0[j+1]   += ti;
             tr = row3[j];
             ti = row3[j+1];
-            row3[j]     = row2[j+1]-ti;
-            row3[j+1]   = tr-row2[j];
-            row2[j]     += tr;
-            row2[j+1]   += ti;
-
-            tr = row2[j];
-            ti = row2[j+1];
-            row2[j]     = row0[j]-tr;
-            row2[j+1]   = row0[j+1]-ti;
-            row0[j]     += tr;
-            row0[j+1]   += ti;
-            tr = row3[j];
-            ti = row3[j+1];
-            row3[j]     = row1[j]-tr;
-            row3[j+1]   = row1[j+1]-ti;
-            row1[j]     += tr;
-            row1[j+1]   += ti;
-        }
-    }
-    void inverse(T *data, int stride, int cols)
-    {
-        T *row0 = data;
-        T *row1 = row0+stride;
-        T *row2 = row1+stride;
-        T *row3 = row2+stride;
-
-#ifdef FFT_OPENMP_SIMD
-        #pragma omp simd
-#endif
-        for (int j=0; j<cols*2; j+=2)
-        {
-            T tr = row1[j];
-            T ti = row1[j+1];
-            row1[j]     = row0[j]-tr;
-            row1[j+1]   = row0[j+1]-ti;
-            row0[j]     += tr;
-            row0[j+1]   += ti;
-            tr = row3[j];
-            ti = row3[j+1];
-            row3[j]     = ti-row2[j+1];
-            row3[j+1]   = row2[j]-tr;
+            row3[j]     = inv ? ti-row2[j+1] : row2[j+1]-ti;
+            row3[j+1]   = inv ? row2[j]-tr : tr-row2[j];
             row2[j]     += tr;
             row2[j+1]   += ti;
 
@@ -412,7 +300,8 @@ struct FFTVertGeneric<4, T>
 template <class T>
 struct FFTVertGeneric<2, T>
 {
-    void forward(T* data, int stride, int cols)
+    template <bool inv_unused>
+    void transform(T* data, int stride, int cols)
     {
         T* row0 = data;
         T* row1 = data+stride;
@@ -428,17 +317,13 @@ struct FFTVertGeneric<2, T>
         }
     }
 
-    void inverse(T* data, int stride, int cols)
-    {
-        forward(data, stride, cols);
-    }
 };
 
 template <class T>
 struct FFTVertGeneric<1, T>
 {
-    void forward(T*, int, int) {}
-    void inverse(T*, int, int) {}
+    template <bool inv_unused>
+    void transform(T*, int, int) {}
 };
 
 template <int N, class T>
