@@ -231,25 +231,35 @@ struct FFTFloat<8>
     template <bool inv>
     void transform(float *data)
     {
-        static const Twiddle<N, float> twiddle;
+        //static const Twiddle<N, float> twiddle;
 
         __m256 E = next.transform_ex<inv>(data);
         __m256 O = next.transform_ex<inv>(data+N);
 
-        __m256 W = _mm256_load_ps(twiddle.t);
-        __m256 Wr = _mm256_moveldup_ps(W);
-        __m256 Wi = _mm256_movehdup_ps(W);
+        __m256 OxW;
 
-        __m256 OxWi = _mm256_mul_ps(O, Wi);
-        __m256 OxWiperm = _mm256_permute_ps(OxWi, _MM_SHUFFLE(2, 3, 0, 1));
-#ifdef __FMA__
-        __m256 OxW = inv ? _mm256_fmsubadd_ps(O, Wr, OxWiperm)
-                         : _mm256_fmaddsub_ps(O, Wr, OxWiperm);
+        if (inv)
+        {
+            __m256 Operm = _mm256_permute_ps(O, _MM_SHUFFLE(2, 3, 0, 1));
+            __m256 signmask = _mm256_castsi256_ps(_mm256_set_epi32(1u<<31, 0, 0, 1u<<31, 0, 1u<<31, 0, 1u<<31));
+            __m256 A = _mm256_blend_ps(O, _mm256_setzero_ps(), 0x30);
+            __m256 B = _mm256_xor_ps(_mm256_blend_ps(Operm, _mm256_setzero_ps(), 0x03), signmask);
+            __m256 C = _mm256_add_ps(A, B);
+            __m256 W = _mm256_set_ps(-M_SQRT1_2, -M_SQRT1_2, 1, 1, M_SQRT1_2, M_SQRT1_2, 1, 1);
+            OxW = _mm256_mul_ps(C, W);
+        }
+        else
+        {
+            __m256 Operm = _mm256_permute_ps(O, _MM_SHUFFLE(2, 3, 0, 1));
+            __m256 signmask = _mm256_castsi256_ps(_mm256_set_epi32(1u<<31, 0, 0, 1u<<31, 0, 1u<<31, 0, 1u<<31));
+            __m256 A = _mm256_blend_ps(O, _mm256_setzero_ps(), 0x30);
+            __m256 B = _mm256_xor_ps(_mm256_blend_ps(Operm, _mm256_setzero_ps(), 0x03), signmask);
+            __m256 C = _mm256_sub_ps(A, B);
+            __m256 W = _mm256_set_ps(-M_SQRT1_2, -M_SQRT1_2, 1, 1, M_SQRT1_2, M_SQRT1_2, 1, 1);
+            OxW = _mm256_mul_ps(C, W);
+        }
 
-#else
-        __m256 OxWr = _mm256_mul_ps(O, Wr);
-        __m256 OxW  = _mm256_addsub_ps(OxWr, inv ? -OxWiperm : OxWiperm);
-#endif
+
         __m256 lo = _mm256_add_ps(E, OxW);
         __m256 hi = _mm256_sub_ps(E, OxW);
 
