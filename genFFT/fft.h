@@ -27,10 +27,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef GENFFT_FFT_H
 #define GENFFT_FFT_H
 
+#include "FFTComplex.h"
 #include "FFTLevel.h"
 #include "FFTFloat.h"
 #include "FFTDouble.h"
-
+#include <complex>
 #include <cassert>
 
 ///@brief GenFFT - generic FFT
@@ -80,35 +81,33 @@ struct FFT
 
     ///@brief Computes forward transform in-place, without data reordering
     ///@param inout data array
-    void forward_no_scramble(T *inout)
+    void forward_no_scramble(std::complex<T> *inout)
     {
-        impl->forward(inout);
+        impl->forward((T*)inout);
     }
     ///@brief Computes inverse transform in-place, without data reordering
     ///@param inout data array
-    void inverse_no_scramble(T *inout)
+    void inverse_no_scramble(std::complex<T> *inout)
     {
-        impl->inverse(inout);
+        impl->inverse((T*)inout);
     }
 
     ///@brief Computes forward transform
     ///@param out output array
     ///@param out input array
-    void forward(T *out, const T *in)
+    void forward(std::complex<T> *out, const std::complex<T> *in)
     {
-        struct cpx { T r, i; };
-        scramble((cpx*)out, (const cpx*)in, n);
-        impl->forward(out);
+        scramble((complex<T>*)out, (const complex<T>*)in, n);
+        impl->forward((T*)out);
     }
 
     ///@brief Computes inverse transform
     ///@param out output array
     ///@param out input array
-    void inverse(T *out, const T *in)
+    void inverse(std::complex<T> *out, const std::complex<T> *in)
     {
-        struct cpx { T r, i; };
-        scramble((cpx*)out, (const cpx*)in, n);
-        impl->inverse(out);
+        scramble((complex<T>*)out, (const complex<T>*)in, n);
+        impl->inverse((T*)out);
     }
 
     int size() const { return n; }
@@ -162,45 +161,45 @@ struct FFTVert
 
     ///@brief Computes forward transform without data reordering
     ///@param data data array
-    ///@param stride stride, in scalar elements, of the data array
+    ///@param stride row stride, in complex elements, of the data array
     ///@param cols row length
-    void forward_no_scramble(T *data, int stride, int cols)
+    void forward_no_scramble(std::complex<T> *data, int stride, int cols)
     {
-        impl->forward(data, stride, cols);
+        impl->forward((T*)data, 2*stride, cols);
     }
 
     ///@brief Computes inverse transform without data reordering
     ///@param data data array
-    ///@param stride stride, in scalar elements, of the data array
+    ///@param stride row stride, in complex elements, of the data array
     ///@param cols row length
-    void inverse_no_scramble(T *data, int stride, int cols)
+    void inverse_no_scramble(std::complex<T> *data, int stride, int cols)
     {
-        impl->inverse(data, stride, cols);
+        impl->inverse((T*)data, 2*stride, cols);
     }
 
     ///@brief Computes forward transform
     ///@param out output array, must not be equal to in
-    ///@param out_stride stride, in scalar elements, of the output array
+    ///@param out_stride stride, in complex elements, of the output array
     ///@param in input array
-    ///@param in_stride stride, in scalar elements, of the input array
+    ///@param in_stride stride, in complex elements, of the input array
     ///@param cols row length
-    void forward(T *out, int out_stride, const T *in, int in_stride, int cols)
+    void forward(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride, int cols)
     {
         struct cpx { T r, i; };
-        scramble_rows((cpx*)out, out_stride/2, (const cpx*)in, in_stride/2, n, cols);
+        scramble_rows((cpx*)out, out_stride, (const cpx*)in, in_stride, n, cols);
         impl->forward(out, out_stride, cols);
     }
 
     ///@brief Computes inverse transform
     ///@param out output array, must not be equal to in
-    ///@param out_stride stride, in scalar elements, of the output array
+    ///@param out_stride stride, in complex elements, of the output array
     ///@param in input array
-    ///@param in_stride stride, in scalar elements, of the input array
+    ///@param in_stride stride, in complex elements, of the input array
     ///@param cols row length
-    void inverse(T *out, int out_stride, const T *in, int in_stride, int cols)
+    void inverse(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride, int cols)
     {
         struct cpx { T r, i; };
-        scramble_rows((cpx*)out, out_stride/2, (const cpx*)in, in_stride/2, n, cols);
+        scramble_rows((cpx*)out, out_stride, (const cpx*)in, in_stride, n, cols);
         impl->inverse(out, out_stride, cols);
     }
 
@@ -222,10 +221,10 @@ public:
 
     ///@brief Computes forward transform
     ///@param out output array, must not be equal to in
-    ///@param out_stride stride, in scalar elements, of the output array
+    ///@param out_stride stride, in complex elements, of the output array
     ///@param in input array
-    ///@param in_stride stride, in scalar elements, of the input array
-    void forward(T *out, int out_stride, const T *in, int in_stride)
+    ///@param in_stride stride, in complex elements, of the input array
+    void forward(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride)
     {
         scramble_row_fft<false>(out, out_stride, in, in_stride, rows());
         vert.forward_no_scramble(out, out_stride, cols());
@@ -233,10 +232,10 @@ public:
 
     ///@brief Computes inverse transform
     ///@param out output array, must not be equal to in
-    ///@param out_stride stride, in scalar elements, of the output array
+    ///@param out_stride stride, in complex elements, of the output array
     ///@param in input array
-    ///@param in_stride stride, in scalar elements, of the input array
-    void inverse(T *out, int out_stride, const T *in, int in_stride)
+    ///@param in_stride stride, in complex elements, of the input array
+    void inverse(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride)
     {
         scramble_row_fft<true>(out, out_stride, in, in_stride, rows());
         vert.inverse_no_scramble(out, out_stride, cols());
@@ -250,7 +249,7 @@ public:
 private:
 
     template <bool inv>
-    void scramble_row_fft(T *out, int out_stride, const T *in, int in_stride, int rows)
+    void scramble_row_fft(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride, int rows)
     {
         if (rows == 1)
         {
@@ -269,6 +268,7 @@ private:
     FFT<T>      horz;
     FFTVert<T>  vert;
 };
+
 
 } // genfft
 
