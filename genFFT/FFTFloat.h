@@ -122,10 +122,10 @@ struct FFTFloat<N, true>
 {
     FFTFloat<N/2> next;
     template <bool inv>
-    void transform(float *data)
+    void transform_impl(float *data)
     {
-        next.template transform<inv>(data);
-        next.template transform<inv>(data+N);
+        next.template transform_impl<inv>(data);
+        next.template transform_impl<inv>(data+N);
 
 #ifdef __AVX__
         for (unsigned i=0; i<N; i+=8)
@@ -214,7 +214,7 @@ struct FFTFloat<4>
     }
 
     template <bool inv>
-    void transform(float *data)
+    void transform_impl(float *data)
     {
         store(data, transform_ex<inv>(data));
     }
@@ -229,7 +229,7 @@ struct FFTFloat<8>
     FFTFloat<4> next;
 
     template <bool inv>
-    void transform(float *data)
+    void transform_impl(float *data)
     {
         //static const Twiddle<N, float> twiddle;
 
@@ -286,11 +286,11 @@ struct FFTVertFloat<N, true>
     FFTVertFloat<N/2> next;
 
     template <bool inv>
-    void transform(float *data, int stride, int cols)
+    void transform_impl(float *data, int stride, int cols)
     {
         int half = N/2 * stride;
-        next.template transform<inv>(data,      stride, cols);
-        next.template transform<inv>(data+half, stride, cols);
+        next.template transform_impl<inv>(data,      stride, cols);
+        next.template transform_impl<inv>(data+half, stride, cols);
 
         for (unsigned i=0; i<N/2; i++)
         {
@@ -373,7 +373,7 @@ template <>
 struct FFTVertFloat<4>
 {
     template <bool inv>
-    void transform(float *data, int stride, int cols)
+    void transform_impl(float *data, int stride, int cols)
     {
         float *row0 = data;
         float *row1 = row0+stride;
@@ -443,7 +443,7 @@ struct FFTVertFloat<4>
         }
 
         // tail
-        FFTVertGeneric<4, float>().transform<inv>(data + j, stride, cols - j/2);
+        FFTVertGeneric<4, float>().transform_impl<inv>(data + j, stride, cols - j/2);
     }
 
 };
@@ -452,7 +452,7 @@ template <>
 struct FFTVertFloat<2>
 {
     template <bool inv_unused>
-    void transform(float *data, int stride, int cols)
+    void transform_impl(float *data, int stride, int cols)
     {
         float *row0 = data;
         float *row1 = row0+stride;

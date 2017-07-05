@@ -45,6 +45,15 @@ struct FFTBase
 {
     virtual ~FFTBase() {}
 
+    template <bool inv>
+    inline void transform(T *data)
+    {
+        if (inv)
+            inverse(data);
+        else
+            forward(data);
+    }
+
     virtual void forward(T *)=0;
     virtual void inverse(T *)=0;
 };
@@ -56,8 +65,8 @@ template <int N, class T>
 struct FFTImpl : FFTBase<T>, FFTImplSelector<N, T>::type
 {
     typedef typename FFTImplSelector<N, T>::type Impl;
-    void forward(T *data) override { Impl::template transform<false>(data); }
-    void inverse(T *data) override { Impl::template transform<true>(data); }
+    void forward(T *data) override { Impl::template transform_impl<false>(data); }
+    void inverse(T *data) override { Impl::template transform_impl<true>(data); }
 };
 
 template <int N, class T>
@@ -68,10 +77,10 @@ struct FFTGeneric
 {
     FFTLevel<N/2, T> next;
     template <bool inv>
-    void transform(T *data)
+    void transform_impl(T *data)
     {
-        next.template transform<inv>(data);
-        next.template transform<inv>(data+N);
+        next.template transform_impl<inv>(data);
+        next.template transform_impl<inv>(data+N);
 
         T tempr, tempi;
 
@@ -99,7 +108,7 @@ template <class T>
 struct FFTGeneric<4, T>
 {
     template <bool inv>
-    void transform(T *data)
+    void transform_impl(T *data)
     {
         T tr = data[2];
         T ti = data[3];
@@ -133,7 +142,7 @@ template <class T>
 struct FFTGeneric<2, T>
 {
     template <bool inv_unused>
-    void transform(T *data)
+    void transform_impl(T *data)
     {
         T tr = data[2];
         T ti = data[3];
@@ -148,7 +157,7 @@ template <class T>
 struct FFTGeneric<1, T>
 {
     template <bool inv_unused>
-    void transform(T *) {}
+    void transform_impl(T *) {}
 };
 
 template <int N, class T>
@@ -195,6 +204,15 @@ struct FFTVertBase
 {
     virtual ~FFTVertBase() {}
 
+    template <bool inv>
+    inline void transform(T *data, int stride, int columns)
+    {
+        if (inv)
+            inverse(data, stride, columns);
+        else
+            forward(data, stride, columns);
+    }
+
     virtual void forward(T *data, int stride, int columns)=0;
     virtual void inverse(T *data, int stride, int columns)=0;
 };
@@ -206,8 +224,8 @@ template <int N, class T>
 struct FFTVertImpl : FFTVertBase<T>, FFTVertImplSelector<N, T>::type
 {
     typedef typename FFTVertImplSelector<N, T>::type Impl;
-    void forward(T *data, int stride, int columns) override { return Impl::template transform<false>(data, stride, columns); }
-    void inverse(T *data, int stride, int columns) override { return Impl::template transform<true>(data, stride, columns); }
+    void forward(T *data, int stride, int columns) override { return Impl::template transform_impl<false>(data, stride, columns); }
+    void inverse(T *data, int stride, int columns) override { return Impl::template transform_impl<true>(data, stride, columns); }
 };
 
 
@@ -220,11 +238,11 @@ struct FFTVertGeneric
     FFTVertLevel<N/2, T> next;
 
     template <bool inv>
-    void transform(T *data, int stride, int columns)
+    void transform_impl(T *data, int stride, int columns)
     {
         const int half = N/2*stride;
-        next.template transform<inv>(data,      stride, columns);
-        next.template transform<inv>(data+half, stride, columns);
+        next.template transform_impl<inv>(data,      stride, columns);
+        next.template transform_impl<inv>(data+half, stride, columns);
 
         for (unsigned i=0; i<N/2; i++)
         {
@@ -256,7 +274,7 @@ template <class T>
 struct FFTVertGeneric<4, T>
 {
     template <bool inv>
-    void transform(T *data, int stride, int cols)
+    void transform_impl(T *data, int stride, int cols)
     {
         T *row0 = data;
         T *row1 = row0+stride;
@@ -301,7 +319,7 @@ template <class T>
 struct FFTVertGeneric<2, T>
 {
     template <bool inv_unused>
-    void transform(T* data, int stride, int cols)
+    void transform_impl(T* data, int stride, int cols)
     {
         T* row0 = data;
         T* row1 = data+stride;
@@ -323,7 +341,7 @@ template <class T>
 struct FFTVertGeneric<1, T>
 {
     template <bool inv_unused>
-    void transform(T*, int, int) {}
+    void transform_impl(T*, int, int) {}
 };
 
 template <int N, class T>

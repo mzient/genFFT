@@ -123,10 +123,10 @@ struct FFTDouble<N, true>
 {
     FFTDouble<N/2> next;
     template <bool inv>
-    void transform(double *data)
+    void transform_impl(double *data)
     {
-        next.template transform<inv>(data);
-        next.template transform<inv>(data+N);
+        next.template transform_impl<inv>(data);
+        next.template transform_impl<inv>(data+N);
 
 #ifdef __AVX__
         for (unsigned i=0; i<N; i+=4)
@@ -183,7 +183,7 @@ template <>
 struct FFTDouble<4>
 {
     template <bool inv>
-    void transform(double *data)
+    void transform_impl(double *data)
     {
         __m128d x45 = _mm_loadu_pd(data+4);
         __m128d x67 = _mm_loadu_pd(data+6);
@@ -234,11 +234,11 @@ struct FFTVertDouble<N, true>
 {
     FFTVertDouble<N/2> next;
     template <bool inv>
-    void transform(double *data, int stride, int cols)
+    void transform_impl(double *data, int stride, int cols)
     {
         int half = N/2 * stride;
-        next.template transform<inv>(data,      stride, cols);
-        next.template transform<inv>(data+half, stride, cols);
+        next.template transform_impl<inv>(data,      stride, cols);
+        next.template transform_impl<inv>(data+half, stride, cols);
 
         for (unsigned i=0; i<N/2; i++)
         {
@@ -310,7 +310,7 @@ template <>
 struct FFTVertDouble<4>
 {
     template <bool inv>
-    void transform(double *data, int stride, int cols)
+    void transform_impl(double *data, int stride, int cols)
     {
         double *row0 = data;
         double *row1 = row0+stride;
@@ -385,7 +385,7 @@ template <>
 struct FFTVertDouble<2>
 {
     template <bool inv_unused>
-    void transform(double *data, int stride, int cols)
+    void transform_impl(double *data, int stride, int cols)
     {
         double *row0 = data;
         double *row1 = row0+stride;

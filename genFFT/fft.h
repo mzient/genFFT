@@ -79,35 +79,25 @@ struct FFT
         this->n = n;
     }
 
-    ///@brief Computes forward transform in-place, without data reordering
+    ///@brief Computes transform in-place, without data reordering
+    ///@tparam inv if true, computes inverse transform
     ///@param inout data array
-    void forward_no_scramble(std::complex<T> *inout)
+    template <bool inv>
+    void transform_no_scramble(std::complex<T> *inout)
     {
-        impl->forward((T*)inout);
-    }
-    ///@brief Computes inverse transform in-place, without data reordering
-    ///@param inout data array
-    void inverse_no_scramble(std::complex<T> *inout)
-    {
-        impl->inverse((T*)inout);
+        impl->transform<inv>((T*)inout);
     }
 
-    ///@brief Computes forward transform
-    ///@param out output array
-    ///@param out input array
-    void forward(std::complex<T> *out, const std::complex<T> *in)
-    {
-        scramble((complex<T>*)out, (const complex<T>*)in, n);
-        impl->forward((T*)out);
-    }
 
-    ///@brief Computes inverse transform
+    ///@brief Computes transform
+    ///@tparam inv if true, computes inverse transform
     ///@param out output array
     ///@param out input array
-    void inverse(std::complex<T> *out, const std::complex<T> *in)
+    template <bool inv>
+    void transform(std::complex<T> *out, const std::complex<T> *in)
     {
         scramble((complex<T>*)out, (const complex<T>*)in, n);
-        impl->inverse((T*)out);
+        impl->transform<inv>((T*)out);
     }
 
     int size() const { return n; }
@@ -159,48 +149,29 @@ struct FFTVert
         this->n = n;
     }
 
-    ///@brief Computes forward transform without data reordering
+    ///@brief Computes transform without data reordering
+    ///@tparam inv if true, computes inverse transform
     ///@param data data array
     ///@param stride row stride, in complex elements, of the data array
     ///@param cols row length
-    void forward_no_scramble(std::complex<T> *data, int stride, int cols)
+    template <bool inv>
+    void transform_no_scramble(std::complex<T> *data, int stride, int cols)
     {
-        impl->forward((T*)data, 2*stride, cols);
+        impl->transform<inv>((T*)data, 2*stride, cols);
     }
 
-    ///@brief Computes inverse transform without data reordering
-    ///@param data data array
-    ///@param stride row stride, in complex elements, of the data array
-    ///@param cols row length
-    void inverse_no_scramble(std::complex<T> *data, int stride, int cols)
-    {
-        impl->inverse((T*)data, 2*stride, cols);
-    }
-
-    ///@brief Computes forward transform
+    ///@brief Computes transform
+    ///@tparam inv if true, computes inverse transform
     ///@param out output array, must not be equal to in
     ///@param out_stride stride, in complex elements, of the output array
     ///@param in input array
     ///@param in_stride stride, in complex elements, of the input array
     ///@param cols row length
-    void forward(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride, int cols)
+    template <bool inv>
+    void transform(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride, int cols)
     {
-        struct cpx { T r, i; };
-        scramble_rows((cpx*)out, out_stride, (const cpx*)in, in_stride, n, cols);
-        impl->forward(out, out_stride, cols);
-    }
-
-    ///@brief Computes inverse transform
-    ///@param out output array, must not be equal to in
-    ///@param out_stride stride, in complex elements, of the output array
-    ///@param in input array
-    ///@param in_stride stride, in complex elements, of the input array
-    ///@param cols row length
-    void inverse(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride, int cols)
-    {
-        struct cpx { T r, i; };
-        scramble_rows((cpx*)out, out_stride, (const cpx*)in, in_stride, n, cols);
-        impl->inverse(out, out_stride, cols);
+        scramble_rows((complex<T>*)out, out_stride, (const complex<T>*)in, in_stride, n, cols);
+        impl->transform<inv>(out, out_stride, cols);
     }
 
     int size() const { return n; }
@@ -219,26 +190,17 @@ public:
     FFT2D() = default;
     FFT2D(int width, int height) : horz(width), vert(height) {}
 
-    ///@brief Computes forward transform
+    ///@brief Computes transform
+    ///@tparam inv if true, computes inverse transform
     ///@param out output array, must not be equal to in
     ///@param out_stride stride, in complex elements, of the output array
     ///@param in input array
     ///@param in_stride stride, in complex elements, of the input array
-    void forward(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride)
+    template <bool inv>
+    void transform(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride)
     {
-        scramble_row_fft<false>(out, out_stride, in, in_stride, rows());
-        vert.forward_no_scramble(out, out_stride, cols());
-    }
-
-    ///@brief Computes inverse transform
-    ///@param out output array, must not be equal to in
-    ///@param out_stride stride, in complex elements, of the output array
-    ///@param in input array
-    ///@param in_stride stride, in complex elements, of the input array
-    void inverse(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride)
-    {
-        scramble_row_fft<true>(out, out_stride, in, in_stride, rows());
-        vert.inverse_no_scramble(out, out_stride, cols());
+        scramble_row_fft<inv>(out, out_stride, in, in_stride, rows());
+        vert.template transform_no_scramble<inv>(out, out_stride, cols());
     }
 
     ///@brief Number of columns in the domain
@@ -253,10 +215,7 @@ private:
     {
         if (rows == 1)
         {
-            if (inv)
-                horz.inverse(out, in);
-            else
-                horz.forward(out, in);
+            horz.template transform<inv>(out, in);
         }
         else
         {
@@ -269,8 +228,9 @@ private:
     FFTVert<T>  vert;
 };
 
-
 } // genfft
+
+//#include "FFTReal.h"
 
 
 #endif /* GENFFT_FFT_H */
