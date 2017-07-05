@@ -230,7 +230,7 @@ private:
 
 } // genfft
 
-//#include "FFTReal.h"
+#include "FFTReal.h"
 
 
 #endif /* GENFFT_FFT_H */
