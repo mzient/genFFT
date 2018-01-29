@@ -100,7 +100,7 @@ struct FFT
         impl->transform<inv>((T*)out);
     }
 
-    ///@brief Computes transform
+    ///@brief Computes forward transform of real data
     ///@param out output array
     ///@param out input array
     void transform_real(std::complex<T> *out, const T *in)
@@ -109,6 +109,16 @@ struct FFT
         impl->transform<false>((T*)out);
     }
 
+    ///@brief Computes forward transform of interleaved real data.
+    ///       Requires postprocessing step to separate the transforms.
+    ///@param out output array
+    ///@param out input array
+    void transform_interleave(std::complex<T> *out, const T *in1, const T *in2)
+    {
+        scramble((T*)out,   in1, n, 2);
+        scramble((T*)out+1, in2, n, 2);
+        impl->transform<false>((T*)out);
+    }
 
     int size() const { return n; }
 

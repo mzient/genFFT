@@ -33,7 +33,7 @@ namespace genfft {
 
 ///@brief Recovers two transforms of real data from one interleaved transform
 template <class T>
-void recover_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const std::complex<T> *in, int N)
+void separate_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const std::complex<T> *in, int N)
 {
     const T *Fz = (const T*)in;
     T *Fx = (T *)out1;
@@ -75,6 +75,21 @@ public:
         vert.template transform_no_scramble<false>(out, out_stride, cols());
     }
 
+    ///@brief Computes forward transform of two interleaved real signals.
+    ///       The output can be separated using recover_2x_real_FFT
+    ///@param out output array, must not be equal to in
+    ///@param out_stride stride, in complex elements, of the output array
+    ///@param in1 1st input array
+    ///@param in2 2nd input array
+    ///@param in_stride1 stride, in scalar elements, of the 1st input array
+    ///@param in_stride2 stride, in scalar elements, of the 2nd input array
+    void forward_2x(std::complex<T> *out, int out_stride, const T *in1, int in_stride1, const T *in2, int in_stride2)
+    {
+        scramble_row_x2(out, out_stride, in1, in_stride1, in2, in_stride2, rows());
+        vert.template transform_no_scramble<false>(out, out_stride, cols());
+    }
+
+
 
     ///@brief Computes inverse transform
     ///@param out output array, must not be equal to in
@@ -104,6 +119,21 @@ private:
         {
             scramble_row_fwd(out,             2*out_stride, in,                    in_stride, rows/2);
             scramble_row_fwd(out+out_stride,  2*out_stride, in+(rows/2)*in_stride, in_stride, rows/2);
+        }
+    }
+
+    void scramble_row_x2(std::complex<T> *out, int out_stride, const T *in1, int in_stride1, const T *in2, int in_stride2, int rows)
+    {
+        if (rows == 1)
+        {
+            scramble((T*)out,   in1, cols(), 2);
+            scramble((T*)out+1, in2, cols(), 2);
+            horz.template transform_no_scramble<false>(out);
+        }
+        else
+        {
+            scramble_row_x2(out,             2*out_stride, in1,                     in_stride1, in2,                     in_stride2, rows/2);
+            scramble_row_x2(out+out_stride,  2*out_stride, in1+(rows/2)*in_stride1, in_stride1, in2+(rows/2)*in_stride1, in_stride2, rows/2);
         }
     }
 
