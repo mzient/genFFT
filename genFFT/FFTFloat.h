@@ -186,7 +186,7 @@ template <>
 struct FFTFloat<4>
 {
     template <bool inv>
-    float8 transform_ex(float *data)
+    float8 transform_1x(float *data)
     {
         __m128 xlo   = _mm_loadu_ps(data);
         __m128 xhi   = _mm_loadu_ps(data + 4);
@@ -216,7 +216,7 @@ struct FFTFloat<4>
     template <bool inv>
     void transform_impl(float *data)
     {
-        store(data, transform_ex<inv>(data));
+        store(data, transform_1x<inv>(data));
     }
 
 };
@@ -233,8 +233,8 @@ struct FFTFloat<8>
     {
         //static const Twiddle<N, float> twiddle;
 
-        __m256 E = next.transform_ex<inv>(data);
-        __m256 O = next.transform_ex<inv>(data+N);
+        __m256 E = next.transform_1x<inv>(data);
+        __m256 O = next.transform_1x<inv>(data+N);
 
         __m256 OxW;
 

@@ -100,6 +100,16 @@ struct FFT
         impl->transform<inv>((T*)out);
     }
 
+    ///@brief Computes transform
+    ///@param out output array
+    ///@param out input array
+    void transform_real(std::complex<T> *out, const T *in)
+    {
+        scramble(out, in, n);
+        impl->transform<false>((T*)out);
+    }
+
+
     int size() const { return n; }
 
 private:

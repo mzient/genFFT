@@ -31,6 +31,30 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace genfft {
 
+///@brief Recovers two transforms of real data from one interleaved transform
+template <class T>
+void recover_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const std::complex<T> *in, int N)
+{
+    const T *Fz = (const T*)in;
+    T *Fx = (T *)out1;
+    T *Fy = (T *)out2;
+
+    Fx[0] = Fz[0];
+    Fx[1] = 0;
+    Fy[0] = Fz[1];
+    Fy[1] = 0;
+
+    for (int i=1; i<N; i++)
+    {
+        int k = N-i;
+        Fx[2*i+0] = (Fz[2*i]   + Fz[2*k])   * 0.5f;
+        Fx[2*i+1] = (Fz[2*i+1] - Fz[2*k+1]) * 0.5f;
+        Fy[2*i+0] = (Fz[2*k+1] + Fz[2*i+1]) * 0.5f;
+        Fy[2*i+1] = (Fz[2*k]   - Fz[2*i])   * 0.5f;
+    }
+}
+
+
 ///@brief 2D FFT
 ///@typeparam T scalar type
 template <class T>
