@@ -200,6 +200,12 @@ std::weak_ptr<FFTLevel<N, T>> FFTLevel<N, T>::instance;
 // Vertical multi-column FFT
 
 template <class T>
+inline int convenient_col_num(int cols)
+{
+    return cols;
+}
+
+template <class T>
 struct FFTVertBase
 {
     virtual ~FFTVertBase() {}

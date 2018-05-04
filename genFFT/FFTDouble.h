@@ -226,6 +226,7 @@ struct FFTImplSelector<N, double>
 };
 
 // Vertical multi-column FFT for singgle precision doubleing point values
+
 template <int N, bool GenericCase=(N>2)>
 struct FFTVertDouble : FFTVertGeneric<N, double> {};
 

@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace genfft {
 
-///@brief Recovers two transforms of real data from one interleaved transform
+/*///@brief Recovers two transforms of real data from one interleaved transform.
 template <class T>
 void separate_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const std::complex<T> *in, int N)
 {
@@ -52,6 +52,40 @@ void separate_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const st
         Fy[2*i+0] = (Fz[2*k+1] + Fz[2*i+1]) * 0.5f;
         Fy[2*i+1] = (Fz[2*k]   - Fz[2*i])   * 0.5f;
     }
+}*/
+
+///@brief Recovers two transforms of real data from one interleaved transform. The input and output arrays may alias.
+template <class T>
+void separate_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const std::complex<T> *in, int N)
+{
+    const T *Fz = (const T*)in;
+    T *Fx = (T *)out1;
+    T *Fy = (T *)out2;
+
+    T xr, xi, yr, yi;
+    xr = Fz[0];
+    yr = Fz[1];
+    Fx[0] = xr;
+    Fx[1] = 0;
+    Fy[0] = yr;
+    Fy[1] = 0;
+
+    for (int i=1; i<=N/2; i++)
+    {
+        int k = N-i;
+        xr = (Fz[2*i]   + Fz[2*k])   * 0.5f;
+        xi = (Fz[2*i+1] - Fz[2*k+1]) * 0.5f;
+        yr = (Fz[2*k+1] + Fz[2*i+1]) * 0.5f;
+        yi = (Fz[2*k]   - Fz[2*i])   * 0.5f;
+        Fx[2*i+0] = xr;
+        Fx[2*i+1] = xi;
+        Fy[2*i+0] = yr;
+        Fy[2*i+1] = yi;
+        Fx[2*k+0] = xr;
+        Fx[2*k+1] =-xi;
+        Fy[2*k+0] = yr;
+        Fy[2*k+1] =-yi;
+    }
 }
 
 
@@ -71,8 +105,25 @@ public:
     ///@param in_stride stride, in scalar elements, of the input array
     void forward(std::complex<T> *out, int out_stride, const T *in, int in_stride)
     {
-        scramble_row_fwd(out, out_stride, in, in_stride, rows());
-        vert.template transform_no_scramble<false>(out, out_stride, cols());
+        const int M = cols();
+        const int N = rows();
+        scramble_row_fwd(out, out_stride, in, in_stride, N);
+        const int vcols = vert_cols();
+        vert.template transform_no_scramble<false>(out, out_stride, vcols);
+        if (vcols != M)
+        {
+            for (int i=0; i<rows(); i++)
+            {
+                int k = i ? N-i : 0;
+                T *irow = (T*)&out[i*out_stride];
+                T *orow = (T*)&out[k*out_stride];
+                for (int j=M-1; j>=vcols; j--)
+                {
+                    orow[2*j]   =  irow[2*(M-j)];
+                    orow[2*j+1] = -irow[2*(M-j)+1];
+                }
+            }
+        }
     }
 
     ///@brief Computes forward transform of two interleaved real signals.
@@ -108,12 +159,26 @@ public:
 
 private:
 
+    int vert_cols() const
+    {
+        return impl::convenient_col_num<float>(cols()/2+1);
+    }
+
     void scramble_row_fwd(std::complex<T> *out, int out_stride, const T *in, int in_stride, int rows)
     {
         if (rows == 1)
         {
             scramble(out, in, cols());
             horz.template transform_no_scramble<false>(out);
+        }
+        else if (rows == 2)
+        {
+            const T *in1 = in;
+            const T *in2 = in + in_stride;
+            scramble((T*)out,   in1, cols(), 2);
+            scramble((T*)out+1, in2, cols(), 2);
+            horz.template transform_no_scramble<false>(out);
+            separate_2x_real_FFT(out, out+out_stride, out, cols());
         }
         else
         {

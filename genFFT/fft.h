@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef GENFFT_FFT_H
 #define GENFFT_FFT_H
 
-#include "FFTComplex.h"
+#include "FFTDecl.h"
 #include "FFTLevel.h"
 #include "FFTFloat.h"
 #include "FFTDouble.h"

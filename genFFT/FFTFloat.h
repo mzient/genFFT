@@ -277,6 +277,17 @@ struct FFTImplSelector<N, float>
 
 // Vertical multi-column FFT for singgle precision floating point values
 
+template <>
+inline int convenient_col_num<float>(int cols)
+{
+#ifdef __AVX__
+    static const int tab[4] = { 0, 0, 2, 1 };
+    return cols + tab[cols&4];
+#else
+    return cols;
+#endif
+}
+
 template <int N, bool GenericCase=(N>4)>
 struct FFTVertFloat : FFTVertGeneric<N, float> {};
 
@@ -494,6 +505,41 @@ struct FFTVertImplSelector<N, float>
 };
 
 } // impl
+
+template <>
+inline void separate_2x_real_FFT<float>(std::complex<float> *out1, std::complex<float> *out2, const std::complex<float> *in, int N)
+{
+    const float *Fz = (const float*)in;
+    float *Fx = (float *)out1;
+    float *Fy = (float *)out2;
+
+    float xr, xi, yr, yi;
+    xr = Fz[0];
+    yr = Fz[1];
+    Fx[0] = xr;
+    Fx[1] = 0;
+    Fy[0] = yr;
+    Fy[1] = 0;
+
+    for (int i=1; i<=N/2; i++)
+    {
+        int k = N-i;
+        xr = (Fz[2*i]   + Fz[2*k])   * 0.5f;
+        xi = (Fz[2*i+1] - Fz[2*k+1]) * 0.5f;
+        yr = (Fz[2*k+1] + Fz[2*i+1]) * 0.5f;
+        yi = (Fz[2*k]   - Fz[2*i])   * 0.5f;
+        Fx[2*i+0] = xr;
+        Fx[2*i+1] = xi;
+        Fy[2*i+0] = yr;
+        Fy[2*i+1] = yi;
+        Fx[2*k+0] = xr;
+        Fx[2*k+1] =-xi;
+        Fy[2*k+0] = yr;
+        Fy[2*k+1] =-yi;
+    }
+}
+
+
 } // genfft
 
 #endif
