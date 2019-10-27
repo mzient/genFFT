@@ -85,7 +85,7 @@ struct FFT
     template <bool inv>
     void transform_no_scramble(std::complex<T> *inout)
     {
-        impl->transform<inv>((T*)inout);
+        impl->template transform<inv>((T*)inout);
     }
 
 
@@ -97,7 +97,7 @@ struct FFT
     void transform(std::complex<T> *out, const std::complex<T> *in)
     {
         scramble((complex<T>*)out, (const complex<T>*)in, n);
-        impl->transform<inv>((T*)out);
+        impl->template transform<inv>((T*)out);
     }
 
     ///@brief Computes forward transform of real data
@@ -177,7 +177,7 @@ struct FFTVert
     template <bool inv>
     void transform_no_scramble(std::complex<T> *data, int stride, int cols)
     {
-        impl->transform<inv>((T*)data, 2*stride, cols);
+        impl->template transform<inv>((T*)data, 2*stride, cols);
     }
 
     ///@brief Computes transform
@@ -191,7 +191,7 @@ struct FFTVert
     void transform(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride, int cols)
     {
         scramble_rows((complex<T>*)out, out_stride, (const complex<T>*)in, in_stride, n, cols);
-        impl->transform<inv>(out, out_stride, cols);
+        impl->template transform<inv>(out, out_stride, cols);
     }
 
     int size() const { return n; }
