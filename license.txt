@@ -1,4 +1,4 @@
-Copyright 2017 Michal Zientkiewicz
+Copyright 2017-2019 Michal Zientkiewicz
 
 All rights reserved.
 

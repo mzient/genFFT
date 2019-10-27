@@ -13,7 +13,7 @@ Currently it only supports power-of-two sizes.
 Usage:
 #include <genFFT/fft.h>
 
-float out[1024], in[1024], inv[1024];
+float out[2*1024], in[2*1024], inv[2*1024];
 genfft::FFT<float>(1024);
 fft.forward(out, in);
 fft.inverse(inv, out); // no scaling!!!
@@ -40,5 +40,5 @@ Q: Do you plan to add half-spectrum FFT for real data?
 A: Maybe :)
 
 
-Copyright (c) 2017 Michal Zientkiewicz
+Copyright (c) 2017-2019 Michal Zientkiewicz
 See license.txt for details.
