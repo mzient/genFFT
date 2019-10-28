@@ -171,7 +171,7 @@ struct FFTLevel : FFTImpl<N, T>
 {
     void *operator new(size_t count)
     {
-        return aligned_alloc(alignof(FFTLevel), count*sizeof(FFTLevel));
+        return aligned_alloc(alignof(FFTLevel), count);
     }
     void operator delete(void *p)
     {
@@ -362,7 +362,7 @@ struct FFTVertLevel : FFTVertImpl<N, T>
 {
     void *operator new(size_t count)
     {
-        return aligned_alloc(alignof(FFTVertLevel), count*sizeof(FFTVertLevel));
+        return aligned_alloc(alignof(FFTVertLevel), count);
     }
     void operator delete(void *p)
     {
