@@ -90,7 +90,7 @@ void separate_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const st
 
 
 ///@brief 2D FFT
-///@typeparam T scalar type
+///@tparam T scalar type
 template <class T>
 class FFT2D_real
 {

@@ -231,10 +231,8 @@ struct FFTFloat<8>
     template <bool inv>
     void transform_impl(float *data)
     {
-        //static const Twiddle<N, float> twiddle;
-
-        __m256 E = next.transform_1x<inv>(data);
-        __m256 O = next.transform_1x<inv>(data+N);
+        float8 E = next.transform_1x<inv>(data);
+        float8 O = next.transform_1x<inv>(data+N);
 
         __m256 OxW;
 

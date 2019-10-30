@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace genfft {
 
 ///@brief A 1D FFT for densely packed data
-///@typeparam T scalar type
+///@tparam T scalar type
 template <class T>
 struct FFT
 {
@@ -106,7 +106,7 @@ struct FFT
     void transform_real(std::complex<T> *out, const T *in)
     {
         scramble(out, in, n);
-        impl->transform<false>((T*)out);
+        impl->template transform<false>((T*)out);
     }
 
     ///@brief Computes forward transform of interleaved real data.
@@ -117,7 +117,7 @@ struct FFT
     {
         scramble((T*)out,   in1, n, 2);
         scramble((T*)out+1, in2, n, 2);
-        impl->transform<false>((T*)out);
+        impl->template transform<false>((T*)out);
     }
 
     int size() const { return n; }
@@ -128,7 +128,7 @@ private:
 };
 
 ///@brief Column-wise 1D FFT for multiple columns
-///@typeparam T scalar type
+///@tparam T scalar type
 template <class T>
 struct FFTVert
 {
@@ -202,7 +202,7 @@ private:
 };
 
 ///@brief 2D FFT
-///@typeparam T scalar type
+///@tparam T scalar type
 template <class T>
 class FFT2D
 {
