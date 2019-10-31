@@ -29,8 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "FFTDecl.h"
 #include "FFTLevel.h"
-#include "FFTFloat.h"
-#include "FFTDouble.h"
+#include "FFTBackend.h"
 #include <complex>
 #include <cassert>
 
@@ -45,37 +44,7 @@ struct FFT
     FFT()=default;
     FFT(int n)
     {
-        switch (n)
-        {
-#define SELECT_FFT_LEVEL(x) case (1<<x): impl = impl::FFTLevel<(1<<x), T>::GetInstance(); break;
-            SELECT_FFT_LEVEL(0);
-            SELECT_FFT_LEVEL(1);
-            SELECT_FFT_LEVEL(2);
-            SELECT_FFT_LEVEL(3);
-            SELECT_FFT_LEVEL(4);
-            SELECT_FFT_LEVEL(5);
-            SELECT_FFT_LEVEL(6);
-            SELECT_FFT_LEVEL(7);
-            SELECT_FFT_LEVEL(8);
-            SELECT_FFT_LEVEL(9);
-            SELECT_FFT_LEVEL(10);
-            SELECT_FFT_LEVEL(11);
-            SELECT_FFT_LEVEL(12);
-            SELECT_FFT_LEVEL(13);
-            SELECT_FFT_LEVEL(14);
-            SELECT_FFT_LEVEL(15);
-            SELECT_FFT_LEVEL(16);
-            SELECT_FFT_LEVEL(17);
-            SELECT_FFT_LEVEL(18);
-            SELECT_FFT_LEVEL(19);
-            SELECT_FFT_LEVEL(20);
-            SELECT_FFT_LEVEL(21);
-            SELECT_FFT_LEVEL(22);
-            SELECT_FFT_LEVEL(23);
-#undef SELECT_FFT_LEVEL
-        default:
-            assert(!"unsupported size");
-        }
+        impl = backend::GetImpl(n, T());
         this->n = n;
     }
 

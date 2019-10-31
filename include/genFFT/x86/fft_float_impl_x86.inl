@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Michal Zientkiewicz
+Copyright 2017-2019 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -24,24 +24,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef GEN_FFT_FLOAT_H
-#define GEN_FFT_FLOAT_H
-
-#ifdef __SSE__
-// at least SSE is required
-#include <x86intrin.h>
-#else
-#define GENFFT_NO_FLOAT_INTRIN
-#endif
-
-#ifndef GENFFT_NO_FLOAT_INTRIN
-
-namespace genfft {
-
 ///@brief Implementation details
-namespace impl {
 
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
 typedef __m256 float8;
 inline float8 load(const float *addr)
 {
@@ -76,7 +61,7 @@ inline __m128 flip_even(__m128 a)
     return _mm_xor_ps(a, signmask);
 }
 
-#ifdef __SSE3__
+#ifdef GENFFT_USE_SSE3
 inline __m128 addsub(__m128 a, __m128 b)
 {
     return _mm_addsub_ps(a, b);
@@ -96,7 +81,7 @@ inline __m128 subadd(__m128 a, __m128 b)
 }
 #endif
 
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
 template <uint8_t mask>
 inline __m128 permute(__m128 x)
 {
@@ -112,13 +97,8 @@ inline __m128 permute(__m128 x)
 
 // Single row FFT for single precision floating point numbers
 
-template <int N, bool GenericCase = (N>8)>
-struct FFTFloat : FFTGeneric<N, float>
-{
-};
-
 template <int N>
-struct FFTFloat<N, true>
+struct FFTFloat
 {
     FFTFloat<N/2> next;
     template <bool inv>
@@ -127,7 +107,7 @@ struct FFTFloat<N, true>
         next.template transform_impl<inv>(data);
         next.template transform_impl<inv>(data+N);
 
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
         for (unsigned i=0; i<N; i+=8)
         {
             __m256 W = _mm256_load_ps(twiddle.t + i);
@@ -138,7 +118,7 @@ struct FFTFloat<N, true>
 
             __m256 OxWi = _mm256_mul_ps(O, Wi);
             __m256 OxWiperm = _mm256_permute_ps(OxWi, _MM_SHUFFLE(2, 3, 0, 1));
-#ifdef __FMA__
+#ifdef GENFFT_USE_FMA
             __m256 OxW = inv ? _mm256_fmsubadd_ps(O, Wr, OxWiperm)
                              : _mm256_fmaddsub_ps(O, Wr, OxWiperm);
 #else
@@ -151,13 +131,13 @@ struct FFTFloat<N, true>
             _mm256_storeu_ps(data + i,     lo);
             _mm256_storeu_ps(data + i + N, hi);
         }
-#elif defined __SSE__
+#elif defined GENFFT_USE_SSE
         for (unsigned i=0; i<N; i+=4)
         {
             __m128 W = _mm_load_ps(twiddle.t + i);
             __m128 E = _mm_loadu_ps(data+i);
             __m128 O = _mm_loadu_ps(data+i+N);
-#ifdef __SSE3__
+#ifdef GENFFT_USE_SSE3
             __m128 Wr = _mm_moveldup_ps(W);
             __m128 Wi = _mm_movehdup_ps(W);
 #else
@@ -181,6 +161,13 @@ struct FFTFloat<N, true>
 
     const Twiddle<N, float> twiddle;
 };
+
+
+template <>
+struct FFTFloat<1> : impl_generic::FFTGeneric<1, float> {};
+
+template <>
+struct FFTFloat<2> : impl_generic::FFTGeneric<2, float> {};
 
 template <>
 struct FFTFloat<4>
@@ -206,7 +193,7 @@ struct FFTFloat<4>
 
         ya = _mm_add_ps(za, zb);
         yb = _mm_sub_ps(za, zb);
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
         return _mm256_insertf128_ps(_mm256_castps128_ps256(ya), yb, 1);
 #else
         return { ya, yb };
@@ -221,7 +208,7 @@ struct FFTFloat<4>
 
 };
 
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
 template <>
 struct FFTFloat<8>
 {
@@ -236,49 +223,36 @@ struct FFTFloat<8>
 
         __m256 OxW;
 
+        __m256 Operm = _mm256_permute_ps(O, _MM_SHUFFLE(2, 3, 0, 1));
+        __m256 signmask = _mm256_castsi256_ps(_mm256_set_epi32(1u<<31, 0, 0, 1u<<31, 0, 1u<<31, 0, 1u<<31));
+        __m256 A = _mm256_blend_ps(O, _mm256_setzero_ps(), 0x30);
+        __m256 B = _mm256_xor_ps(_mm256_blend_ps(Operm, _mm256_setzero_ps(), 0x03), signmask);
+        __m256 W = _mm256_set_ps(-M_SQRT1_2, -M_SQRT1_2, 1, 1, M_SQRT1_2, M_SQRT1_2, 1, 1);
         if (inv)
         {
-            __m256 Operm = _mm256_permute_ps(O, _MM_SHUFFLE(2, 3, 0, 1));
-            __m256 signmask = _mm256_castsi256_ps(_mm256_set_epi32(1u<<31, 0, 0, 1u<<31, 0, 1u<<31, 0, 1u<<31));
-            __m256 A = _mm256_blend_ps(O, _mm256_setzero_ps(), 0x30);
-            __m256 B = _mm256_xor_ps(_mm256_blend_ps(Operm, _mm256_setzero_ps(), 0x03), signmask);
             __m256 C = _mm256_add_ps(A, B);
-            __m256 W = _mm256_set_ps(-M_SQRT1_2, -M_SQRT1_2, 1, 1, M_SQRT1_2, M_SQRT1_2, 1, 1);
             OxW = _mm256_mul_ps(C, W);
         }
         else
         {
-            __m256 Operm = _mm256_permute_ps(O, _MM_SHUFFLE(2, 3, 0, 1));
-            __m256 signmask = _mm256_castsi256_ps(_mm256_set_epi32(1u<<31, 0, 0, 1u<<31, 0, 1u<<31, 0, 1u<<31));
-            __m256 A = _mm256_blend_ps(O, _mm256_setzero_ps(), 0x30);
-            __m256 B = _mm256_xor_ps(_mm256_blend_ps(Operm, _mm256_setzero_ps(), 0x03), signmask);
             __m256 C = _mm256_sub_ps(A, B);
-            __m256 W = _mm256_set_ps(-M_SQRT1_2, -M_SQRT1_2, 1, 1, M_SQRT1_2, M_SQRT1_2, 1, 1);
             OxW = _mm256_mul_ps(C, W);
         }
 
 
         __m256 lo = _mm256_add_ps(E, OxW);
         __m256 hi = _mm256_sub_ps(E, OxW);
-
-        _mm256_storeu_ps(data,     lo);
-        _mm256_storeu_ps(data + N, hi);
+        store(data,     lo);
+        store(data + N, hi);
     }
 };
 #endif
 
-template <int N>
-struct FFTImplSelector<N, float>
-{
-    typedef impl::FFTFloat<N> type;
-};
-
 // Vertical multi-column FFT for singgle precision floating point values
 
-template <>
-inline int convenient_col_num<float>(int cols)
+inline int convenient_col_num(int cols, float)
 {
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
     static const int tab[4] = { 0, 0, 2, 1 };
     return cols + tab[cols&4];
 #else
@@ -286,11 +260,8 @@ inline int convenient_col_num<float>(int cols)
 #endif
 }
 
-template <int N, bool GenericCase=(N>4)>
-struct FFTVertFloat : FFTVertGeneric<N, float> {};
-
 template <int N>
-struct FFTVertFloat<N, true>
+struct FFTVertFloat
 {
     FFTVertFloat<N/2> next;
 
@@ -307,7 +278,7 @@ struct FFTVertFloat<N, true>
             float *odd  = even + half;
 
             int j=0;
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
             __m256 Wr = _mm256_broadcast_ss(&twiddle.t[2*i]);
             __m256 Wi = _mm256_broadcast_ss(&twiddle.t[2*i+1]);
 
@@ -318,7 +289,7 @@ struct FFTVertFloat<N, true>
 
                 __m256 OxWi = _mm256_mul_ps(O, Wi);
                 __m256 OxWiperm = _mm256_permute_ps(OxWi, _MM_SHUFFLE(2, 3, 0, 1));
-#ifdef __FMA__
+#ifdef GENFFT_USE_FMA
                 __m256 OxW  = inv ? _mm256_fmsubadd_ps(O, Wr, OxWiperm)
                                   : _mm256_fmaddsub_ps(O, Wr, OxWiperm);
 #else
@@ -346,7 +317,7 @@ struct FFTVertFloat<N, true>
 
                 __m128 OxWi = _mm_mul_ps(O, Wi128);
                 __m128 Wxiperm = permute<_MM_SHUFFLE(2, 3, 0, 1)>(OxWi);
-#ifdef __FMA__
+#ifdef GENFFT_USE_FMA
                 __m128 OxW  = inv ? _mm_fmsubadd_ps(O, Wr128, Wxiperm)
                                   : _mm_fmaddsub_ps(O, Wr128, Wxiperm);
 #else
@@ -390,7 +361,7 @@ struct FFTVertFloat<4>
         float *row3 = row2+stride;
 
         int j = 0;
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
         for (; j+8<=cols*2; j+=8)
         {
             __m256 x0 = _mm256_loadu_ps(row0+j);
@@ -430,7 +401,7 @@ struct FFTVertFloat<4>
             __m128 y0 = _mm_add_ps(x0, x1);
             __m128 y1 = _mm_sub_ps(x0, x1);
             __m128 y2 = _mm_add_ps(x2, x3);
-#ifdef __SSE4_1__
+#ifdef GENFFT_USE_SSE4_1
             enum {
                 mask1 = inv ? 0xa : 0x5,
                 mask2 = inv ? 0x5 : 0xa
@@ -452,9 +423,16 @@ struct FFTVertFloat<4>
         }
 
         // tail
-        FFTVertGeneric<4, float>().transform_impl<inv>(data + j, stride, cols - j/2);
+        impl_generic::FFTVertGeneric<4, float>().transform_impl<inv>(data + j, stride, cols - j/2);
     }
 
+};
+
+template <>
+struct FFTVertFloat<1>
+{
+    template <bool inv_unused>
+    void transform_impl(float *data, int stride, int cols) {}
 };
 
 template <>
@@ -467,7 +445,7 @@ struct FFTVertFloat<2>
         float *row1 = row0+stride;
 
         int j = 0;
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
         for (; j+8<=cols*2; j+=8)
         {
             __m256 x0 = _mm256_loadu_ps(row0+j);
@@ -476,7 +454,7 @@ struct FFTVertFloat<2>
             _mm256_storeu_ps(row1+j, _mm256_sub_ps(x0, x1));
         }
 #endif
-#ifdef __SSE__
+#ifdef GENFFT_USE_SSE
         for (; j+4<=cols*2; j+=4)
         {
             __m128 x0 = _mm_loadu_ps(row0+j);
@@ -493,53 +471,38 @@ struct FFTVertFloat<2>
             row1[j] = x0 - x1;
         }
     }
-
 };
 
-template <int N>
-struct FFTVertImplSelector<N, float>
+inline std::shared_ptr<impl::FFTBase<float>> GetImpl(int n, float)
 {
-    typedef impl::FFTVertFloat<N> type;
-};
-
-} // impl
-
-template <>
-inline void separate_2x_real_FFT<float>(std::complex<float> *out1, std::complex<float> *out2, const std::complex<float> *in, int N)
-{
-    const float *Fz = (const float*)in;
-    float *Fx = (float *)out1;
-    float *Fy = (float *)out2;
-
-    float xr, xi, yr, yi;
-    xr = Fz[0];
-    yr = Fz[1];
-    Fx[0] = xr;
-    Fx[1] = 0;
-    Fy[0] = yr;
-    Fy[1] = 0;
-
-    for (int i=1; i<=N/2; i++)
-    {
-        int k = N-i;
-        xr = (Fz[2*i]   + Fz[2*k])   * 0.5f;
-        xi = (Fz[2*i+1] - Fz[2*k+1]) * 0.5f;
-        yr = (Fz[2*k+1] + Fz[2*i+1]) * 0.5f;
-        yi = (Fz[2*k]   - Fz[2*i])   * 0.5f;
-        Fx[2*i+0] = xr;
-        Fx[2*i+1] = xi;
-        Fy[2*i+0] = yr;
-        Fy[2*i+1] = yi;
-        Fx[2*k+0] = xr;
-        Fx[2*k+1] =-xi;
-        Fy[2*k+0] = yr;
-        Fy[2*k+1] =-yi;
+    switch (n) {
+#define SELECT_FFT_LEVEL(x) case (1<<x): return impl::FFTLevel<(1<<x), float, FFTFloat<(1<<x)>>::GetInstance();
+            SELECT_FFT_LEVEL(0);
+            SELECT_FFT_LEVEL(1);
+            SELECT_FFT_LEVEL(2);
+            SELECT_FFT_LEVEL(3);
+            SELECT_FFT_LEVEL(4);
+            SELECT_FFT_LEVEL(5);
+            SELECT_FFT_LEVEL(6);
+            SELECT_FFT_LEVEL(7);
+            SELECT_FFT_LEVEL(8);
+            SELECT_FFT_LEVEL(9);
+            SELECT_FFT_LEVEL(10);
+            SELECT_FFT_LEVEL(11);
+            SELECT_FFT_LEVEL(12);
+            SELECT_FFT_LEVEL(13);
+            SELECT_FFT_LEVEL(14);
+            SELECT_FFT_LEVEL(15);
+            SELECT_FFT_LEVEL(16);
+            SELECT_FFT_LEVEL(17);
+            SELECT_FFT_LEVEL(18);
+            SELECT_FFT_LEVEL(19);
+            SELECT_FFT_LEVEL(20);
+            SELECT_FFT_LEVEL(21);
+            SELECT_FFT_LEVEL(22);
+            SELECT_FFT_LEVEL(23);
+#undef SELECT_FFT_LEVEL
+        default:
+            assert(!"unsupported size");
     }
 }
-
-
-} // genfft
-
-#endif
-
-#endif /* GEN_FFT_FLOAT_H */

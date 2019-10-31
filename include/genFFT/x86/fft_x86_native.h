@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Michal Zientkiewicz
+Copyright 2019 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -24,71 +24,50 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef GEN_FFT_TWIDDLE_H
-#define GEN_FFT_TWIDDLE_H
+#ifndef _GENFFT_X86_H
+#define _GENFFT_X86_H
 
-#include <stdlib.h>
-#include <cmath>
-#include <utility>
+#ifdef __SSE__
+#include <xmmintrin.h>
+
+#define GENFFT_USE_SSE
+#endif
+
+#ifdef __SSE3__
+#define GENFFT_USE_SSE3
+#include <emmintrin.h>
+#endif
+
+#ifdef __SSE4_1__
+#include <smmintrin.h>
+
+#endif
+
+#if defined(__AVX__) || defined(__AVX2__) || defined(__FMA__)
+#include <immintrin.h>
+#endif
+
+#ifdef __AVX__
+#define GENFFT_USE_AVX
+#endif
+
+#ifdef __FMA__
+#define GENFFT_USE_FMA
+#endif
+
+#ifdef __AVX2__
+#define GENFFT_USE_AVX2
+#endif
 
 namespace genfft {
+namespace impl_native {
 
-template <int _N, class T>
-struct Twiddle
-{
-    static constexpr int N = _N;
-    T operator[](int i) const { return t[i]; }
-    alignas(32) T t[N];
-    Twiddle()
-    {
-        for (int i=0; i<N; i+=2)
-        {
-            t[i]   =  std::cos(M_PI*i/N);
-            t[i+1] = -std::sin(M_PI*i/N);
-        }
-    }
-};
+#include "fft_float_impl_x86.inl"
+#include "fft_double_impl_x86.inl"
 
-template <class T>
-struct Twiddle<-1, T>
-{
-    T operator[](int i) const { return t[i]; }
-    T *t = nullptr;
-    int N = 0;
-
-    Twiddle() = default;
-    explicit Twiddle(int n) : N(n)
-    {
-        t = static_cast<T*>(aligned_alloc(32, N*sizeof(T)));
-        for (int i=0; i<N; i+=2)
-        {
-            t[i]   =  std::cos(M_PI*i/N);
-            t[i+1] = -std::sin(M_PI*i/N);
-        }
-    }
-
-    Twiddle(const Twiddle &) = delete;
-    Twiddle(Twiddle &&other) : t(other.t), N(other.N)
-    {
-        other.t = nullptr;
-        other.N = 0;
-    }
-
-    Twiddle &operator=(const Twiddle &) = delete;
-    Twiddle &operator=(Twiddle &other)
-    {
-        std::swap(t, other.t);
-        std::swap(N, other.N);
-        return *this;
-    }
-
-    ~Twiddle()
-    {
-        free(t);
-        t = nullptr;
-    }
-};
+}
 
 } // genfft
 
-#endif /* GEN_FFT_TWIDDLE_H */
+
+#endif
