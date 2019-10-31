@@ -32,7 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #include "FFTUtil.h"
-#include "FFTTwiddle.h"
 
 #include <memory>
 

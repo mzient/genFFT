@@ -6,7 +6,7 @@
 
 namespace {
 
-class FFT_float_test_dispatch : public testing::TestWithParam<int>
+class FFT_test_dispatch : public testing::TestWithParam<int>
 {
 };
 
@@ -23,7 +23,7 @@ void DummyData(std::vector<std::complex<T>> &vec, bool real)
     }
 }
 
-TEST_P(FFT_float_test_dispatch, InverseIdentity)
+TEST_P(FFT_test_dispatch, InverseIdentity_float)
 {
     int n = GetParam();
     genfft::FFT<float> fft(n);
@@ -41,12 +41,36 @@ TEST_P(FFT_float_test_dispatch, InverseIdentity)
     }
 }
 
+TEST_P(FFT_test_dispatch, InverseIdentity_double)
+{
+    int n = GetParam();
+    genfft::FFT<double> fft(n);
+    std::vector<std::complex<double>> in(n), out(n), invout(n);
+    DummyData(in, false);
+    fft.transform<false>(out.data(), in.data());
+    fft.transform<true>(invout.data(), out.data());
+    const double eps = 1e-7;
+    const double norm = 1.0/n;
+    for (int i = 0; i < n; i++)
+    {
+        std::complex<double> x = invout[i] * norm;
+        ASSERT_NEAR(in[i].real(), x.real(), eps);
+        ASSERT_NEAR(in[i].imag(), x.imag(), eps);
+    }
+}
+
 auto FFT_Sizes = ::testing::Values(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
     1<<14, 1<<15, 1<<16, 1<<17, 1<<18, 1<<19, 1<<20, 1<<21, 1<<22);
 
 INSTANTIATE_TEST_CASE_P(
-    InverseIdentity,
-    FFT_float_test_dispatch,
+    InverseIdentity_float,
+    FFT_test_dispatch,
+    FFT_Sizes
+);
+
+INSTANTIATE_TEST_CASE_P(
+    InverseIdentity_double,
+    FFT_test_dispatch,
     FFT_Sizes
 );
 

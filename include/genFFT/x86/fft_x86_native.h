@@ -59,6 +59,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GENFFT_USE_AVX2
 #endif
 
+#include "../FFTTwiddle.h"
+
 namespace genfft {
 namespace impl_native {
 
