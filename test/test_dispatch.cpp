@@ -63,13 +63,7 @@ auto FFT_Sizes = ::testing::Values(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 204
     1<<14, 1<<15, 1<<16, 1<<17, 1<<18, 1<<19, 1<<20, 1<<21, 1<<22);
 
 INSTANTIATE_TEST_CASE_P(
-    InverseIdentity_float,
-    FFT_test_dispatch,
-    FFT_Sizes
-);
-
-INSTANTIATE_TEST_CASE_P(
-    InverseIdentity_double,
+    InverseIdentity_Pow2,
     FFT_test_dispatch,
     FFT_Sizes
 );

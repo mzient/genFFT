@@ -29,22 +29,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "FFTComplex.h"
 #include <complex>
+#include <memory>
 
 namespace genfft {
-
-template <class T>
-struct FFT;
-
-template <class T>
-struct FFTVert;
-
-template <class T>
-class FFT2D;
-
+    
 template <class T>
 void separate_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const std::complex<T> *in, int N);
 
 } // genfft
 
 #endif /* FFTDECL_H */
-

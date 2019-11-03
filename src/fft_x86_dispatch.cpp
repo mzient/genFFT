@@ -50,7 +50,7 @@ namespace impl_AVX_FMA {
 }
 
 namespace impl_AVX2 {
-    #define USE_AVX2
+    #define GENFFT_USE_AVX2
     #include <genFFT/x86/fft_float_impl_x86.inl>
 
     inline std::shared_ptr<impl::FFTBase<double>> GetImpl(int n, double) {

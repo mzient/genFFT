@@ -36,15 +36,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ///@brief GenFFT - generic FFT
 namespace genfft {
 
+template <typename T>
+using FFTImplPtr = std::shared_ptr<impl::FFTBase<T>>;
+template <typename T>
+using FFTImplFactory = FFTImplPtr<T>(int n, T);
+
 ///@brief A 1D FFT for densely packed data
 ///@tparam T scalar type
-template <class T>
+template <class T, FFTImplFactory<T> *factory = backend::GetImpl>
 struct FFT
 {
     FFT()=default;
     FFT(int n)
     {
-        impl = backend::GetImpl(n, T());
+        impl = factory(n, T());
         this->n = n;
     }
 
@@ -93,7 +98,7 @@ struct FFT
 
 private:
     int n = 0;
-    std::shared_ptr<impl::FFTBase<T>> impl;
+    FFTImplPtr<T> impl;
 };
 
 ///@brief Column-wise 1D FFT for multiple columns

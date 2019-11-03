@@ -21,7 +21,7 @@ ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+SOFTWARE, EVEN IF ADVISED  THE uint32_t CH DAMAGE.
 */
 
 #include "x86_features.h"
@@ -30,6 +30,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 
 namespace genfft {
+
+static inline int
+__get_cpuid_count (uint32_t leaf, uint32_t subleaf,
+		   uint32_t *eax, uint32_t *ebx,
+		   uint32_t *ecx, uint32_t *edx)
+{
+  uint32_t ext = leaf & 0x80000000;
+  uint32_t maxlevel = __get_cpuid_max(ext, 0);
+
+  if (maxlevel == 0 || maxlevel < leaf)
+    return 0;
+
+  __cpuid_count(leaf, subleaf, *eax, *ebx, *ecx, *edx);
+  return 1;
+}
 
 static cpu_features InitCPUFeatures()
 {
