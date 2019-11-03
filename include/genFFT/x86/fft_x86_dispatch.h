@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Michal Zientkiewicz
+Copyright 2017-2019 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -24,28 +24,16 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef GEN_FFT_TWIDDLE_H
-#define GEN_FFT_TWIDDLE_H
-
-#include <cmath>
+#ifndef GENFFT_X86_DISPATCH_H
+#define GENFFT_X86_DISPATCH_H
 
 namespace genfft {
+namespace impl_x86_dispatch {
 
-template <int N, class T>
-struct Twiddle
-{
-    T operator[](int i) const { return t[i]; }
-    alignas(32) T t[N];
-    Twiddle()
-    {
-        for (int i=0; i<N; i+=2)
-        {
-            t[i]   =  std::cos(M_PI*i/N);
-            t[i+1] = -std::sin(M_PI*i/N);
-        }
-    }
-};
+std::shared_ptr<impl::FFTBase<float>> GetImpl(int n, float);
+std::shared_ptr<impl::FFTBase<double>> GetImpl(int n, double);
 
+} // impl_x86_dispatch
 } // genfft
 
-#endif /* GEN_FFT_TWIDDLE_H */
+#endif /* GENFFT_X86_DISPATCH_H */

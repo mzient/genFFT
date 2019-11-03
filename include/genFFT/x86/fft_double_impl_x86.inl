@@ -23,23 +23,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GEN_FFT_DOUBLE_H
-#define GEN_FFT_DOUBLE_H
 
-#ifdef __SSE2__
-// at least SSE2 is required
-#include <x86intrin.h>
-#else
-#define GENFFT_NO_DOUBLE_INTRIN
-#endif
-
-#ifndef GENFFT_NO_DOUBLE_INTRIN
-
-///@brief Implementation details
-namespace genfft {
-namespace impl {
-
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
 typedef __m256d double4;
 inline double4 load(const double *addr)
 {
@@ -77,7 +62,7 @@ inline __m128d flip_even(__m128d a)
     return _mm_xor_pd(a, signmask);
 }
 
-#ifdef __SSE3__
+#ifdef GENFFT_USE_SSE3
 inline __m128d addsub(__m128d a, __m128d b)
 {
     return _mm_addsub_pd(a, b);
@@ -97,7 +82,7 @@ inline __m128d subadd(__m128d a, __m128d b)
 }
 #endif
 
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
 template <uint8_t mask>
 inline __m128d permute(__m128d x)
 {
@@ -113,13 +98,8 @@ inline __m128d permute(__m128d x)
 
 // Single row FFT for single precision doubleing point numbers
 
-template <int N, bool GenericCase = (N>2)>
-struct FFTDouble : FFTGeneric<N, double>
-{
-};
-
 template <int N>
-struct FFTDouble<N, true>
+struct FFTDouble
 {
     FFTDouble<N/2> next;
     template <bool inv>
@@ -128,7 +108,7 @@ struct FFTDouble<N, true>
         next.template transform_impl<inv>(data);
         next.template transform_impl<inv>(data+N);
 
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
         for (unsigned i=0; i<N; i+=4)
         {
             __m256d W = _mm256_load_pd(twiddle.t + i);
@@ -136,10 +116,10 @@ struct FFTDouble<N, true>
             __m256d O = _mm256_loadu_pd(data+i+N);
             __m256d Wr = _mm256_permute_pd(W, _MM_SHUFFLE4x2(0, 0, 0, 0));
             __m256d Wi = _mm256_permute_pd(W, _MM_SHUFFLE4x2(1, 1, 1, 1));
-            
+
             __m256d OxWi = _mm256_mul_pd(O, Wi);
             __m256d Wxiperm = _mm256_permute_pd(OxWi, _MM_SHUFFLE4x2(0, 1, 0, 1));
-#ifdef __FMA__
+#ifdef GENFFT_USE_FMA
             __m256d OxW  = inv ? _mm256_fmsubadd_pd(O, Wr, Wxiperm)
                                : _mm256_fmaddsub_pd(O, Wr, Wxiperm);
 #else
@@ -152,7 +132,7 @@ struct FFTDouble<N, true>
             _mm256_storeu_pd(data + i,     lo);
             _mm256_storeu_pd(data + i + N, hi);
         }
-#elif defined __SSE2__
+#elif defined GENFFT_USE_SSE2
         for (unsigned i=0; i<N; i+=2)
         {
             __m128d W = _mm_load_pd(twiddle.t + i);
@@ -180,6 +160,12 @@ struct FFTDouble<N, true>
 };
 
 template <>
+struct FFTDouble<1> : impl_generic::FFTGeneric<1, double> {};
+
+template <>
+struct FFTDouble<2> : impl_generic::FFTGeneric<2, double> {};
+
+template <>
 struct FFTDouble<4>
 {
     template <bool inv>
@@ -192,13 +178,13 @@ struct FFTDouble<4>
 
         __m128d y76 = inv ? _mm_sub_pd(x67, x45) : _mm_sub_pd(x45, x67);
         __m128d y67 = permute<_MM_SHUFFLE2(0,1)>(flip_even(y76));
-        
+
         __m128d x01 = _mm_loadu_pd(data);
         __m128d x23 = _mm_loadu_pd(data+2);
 
         __m128d y01 = _mm_add_pd(x01, x23);
         __m128d y23 = _mm_sub_pd(x01, x23);
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
         __m256d y0123 = _mm256_insertf128_pd(_mm256_castpd128_pd256(y01), y23, 1);
         __m256d y4567 = _mm256_insertf128_pd(_mm256_castpd128_pd256(y45), y67, 1);
         __m256d z0 = _mm256_add_pd(y0123, y4567);
@@ -219,19 +205,10 @@ struct FFTDouble<4>
     }
 };
 
-template <int N>
-struct FFTImplSelector<N, double>
-{
-    typedef impl::FFTDouble<N> type;
-};
-
 // Vertical multi-column FFT for singgle precision doubleing point values
 
-template <int N, bool GenericCase=(N>2)>
-struct FFTVertDouble : FFTVertGeneric<N, double> {};
-
 template <int N>
-struct FFTVertDouble<N, true>
+struct FFTVertDouble
 {
     FFTVertDouble<N/2> next;
     template <bool inv>
@@ -247,7 +224,7 @@ struct FFTVertDouble<N, true>
             double *odd  = even + half;
 
             int j=0;
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
             __m256d Wr = _mm256_broadcast_sd(&twiddle.t[2*i]);
             __m256d Wi = _mm256_broadcast_sd(&twiddle.t[2*i+1]);
 
@@ -258,7 +235,7 @@ struct FFTVertDouble<N, true>
 
                 __m256d OxWi = _mm256_mul_pd(O, Wi);
                 __m256d OxWiperm = _mm256_permute_pd(OxWi, _MM_SHUFFLE4x2(0, 1, 0, 1));
-#ifdef __FMA__
+#ifdef GENFFT_USE_FMA
                 __m256d OxW  = inv ? _mm256_fmsubadd_pd(O, Wr, OxWiperm)
                                    : _mm256_fmaddsub_pd(O, Wr, OxWiperm);
 #else
@@ -286,7 +263,7 @@ struct FFTVertDouble<N, true>
 
                 __m128d OxWi = _mm_mul_pd(O, Wi128);
                 __m128d Wxiperm = permute<_MM_SHUFFLE2(0, 1)>(OxWi);
-#ifdef __FMA__
+#ifdef GENFFT_USE_FMA
                 __m128d OxW  = inv ? _mm_fmsubadd_pd(O, Wr128, Wxiperm)
                                    : _mm_fmaddsub_pd(O, Wr128, Wxiperm);
 #else
@@ -319,7 +296,7 @@ struct FFTVertDouble<4>
         double *row3 = row2+stride;
 
         int j = 0;
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
         for (; j+4<=cols*2; j+=4)
         {
             __m256d x0 = _mm256_loadu_pd(row0+j);
@@ -363,7 +340,7 @@ struct FFTVertDouble<4>
                 mask1 = inv ? 2 : 1,
                 mask2 = inv ? 1 : 2
             };
-#ifdef __SSE4_1__
+#ifdef GENFFT_USE_SSE4_1
             __m128d y3 = permute<_MM_SHUFFLE2(0,1)>(_mm_sub_pd(_mm_blend_pd(x2, x3, mask1), _mm_blend_pd(x2, x3, mask2)));
 #else
             __m128d y3 = permute<_MM_SHUFFLE2(0,1)>(flip_even(inv ? _mm_sub_pd(x3, x2) : _mm_sub_pd(x2, x3)));
@@ -392,7 +369,7 @@ struct FFTVertDouble<2>
         double *row1 = row0+stride;
 
         int j = 0;
-#ifdef __AVX__
+#ifdef GENFFT_USE_AVX
         for (; j+4<=cols*2; j+=4)
         {
             __m256d x0 = _mm256_loadu_pd(row0+j);
@@ -401,7 +378,7 @@ struct FFTVertDouble<2>
             _mm256_storeu_pd(row1+j, _mm256_sub_pd(x0, x1));
         }
 #endif
-#ifdef __SSE2__
+#ifdef GENFFT_USE_SSE2
         for (; j+2<=cols*2; j+=2)
         {
             __m128d x0 = _mm_loadu_pd(row0+j);
@@ -421,15 +398,43 @@ struct FFTVertDouble<2>
     }
 };
 
-template <int N>
-struct FFTVertImplSelector<N, double>
+template <>
+struct FFTVertDouble<1>
 {
-    typedef impl::FFTVertDouble<N> type;
+    template <bool inv_unused>
+    void transform_impl(double *data, int stride, int cols) {}
 };
 
-} // impl
-} // genfft
-
-#endif
-
-#endif /* GEN_FFT_DOUBLE_H */
+inline std::shared_ptr<impl::FFTBase<double>> GetImpl(int n, double)
+{
+    switch (n) {
+#define SELECT_FFT_LEVEL(x) case (1<<x): return impl::FFTLevel<(1<<x), double, FFTDouble<(1<<x)>>::GetInstance();
+            SELECT_FFT_LEVEL(0);
+            SELECT_FFT_LEVEL(1);
+            SELECT_FFT_LEVEL(2);
+            SELECT_FFT_LEVEL(3);
+            SELECT_FFT_LEVEL(4);
+            SELECT_FFT_LEVEL(5);
+            SELECT_FFT_LEVEL(6);
+            SELECT_FFT_LEVEL(7);
+            SELECT_FFT_LEVEL(8);
+            SELECT_FFT_LEVEL(9);
+            SELECT_FFT_LEVEL(10);
+            SELECT_FFT_LEVEL(11);
+            SELECT_FFT_LEVEL(12);
+            SELECT_FFT_LEVEL(13);
+            SELECT_FFT_LEVEL(14);
+            SELECT_FFT_LEVEL(15);
+            SELECT_FFT_LEVEL(16);
+            SELECT_FFT_LEVEL(17);
+            SELECT_FFT_LEVEL(18);
+            SELECT_FFT_LEVEL(19);
+            SELECT_FFT_LEVEL(20);
+            SELECT_FFT_LEVEL(21);
+            SELECT_FFT_LEVEL(22);
+            SELECT_FFT_LEVEL(23);
+#undef SELECT_FFT_LEVEL
+        default:
+            assert(!"unsupported size");
+    }
+}

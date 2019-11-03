@@ -29,53 +29,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "FFTDecl.h"
 #include "FFTLevel.h"
-#include "FFTFloat.h"
-#include "FFTDouble.h"
+#include "FFTBackend.h"
 #include <complex>
 #include <cassert>
 
 ///@brief GenFFT - generic FFT
 namespace genfft {
 
+template <typename T>
+using FFTImplPtr = std::shared_ptr<impl::FFTBase<T>>;
+template <typename T>
+using FFTImplFactory = FFTImplPtr<T>(int n, T);
+
 ///@brief A 1D FFT for densely packed data
-///@typeparam T scalar type
-template <class T>
+///@tparam T scalar type
+template <class T, FFTImplFactory<T> *factory = backend::GetImpl>
 struct FFT
 {
     FFT()=default;
     FFT(int n)
     {
-        switch (n)
-        {
-#define SELECT_FFT_LEVEL(x) case (1<<x): impl = impl::FFTLevel<(1<<x), T>::GetInstance(); break;
-            SELECT_FFT_LEVEL(0);
-            SELECT_FFT_LEVEL(1);
-            SELECT_FFT_LEVEL(2);
-            SELECT_FFT_LEVEL(3);
-            SELECT_FFT_LEVEL(4);
-            SELECT_FFT_LEVEL(5);
-            SELECT_FFT_LEVEL(6);
-            SELECT_FFT_LEVEL(7);
-            SELECT_FFT_LEVEL(8);
-            SELECT_FFT_LEVEL(9);
-            SELECT_FFT_LEVEL(10);
-            SELECT_FFT_LEVEL(11);
-            SELECT_FFT_LEVEL(12);
-            SELECT_FFT_LEVEL(13);
-            SELECT_FFT_LEVEL(14);
-            SELECT_FFT_LEVEL(15);
-            SELECT_FFT_LEVEL(16);
-            SELECT_FFT_LEVEL(17);
-            SELECT_FFT_LEVEL(18);
-            SELECT_FFT_LEVEL(19);
-            SELECT_FFT_LEVEL(20);
-            SELECT_FFT_LEVEL(21);
-            SELECT_FFT_LEVEL(22);
-            SELECT_FFT_LEVEL(23);
-#undef SELECT_FFT_LEVEL
-        default:
-            assert(!"unsupported size");
-        }
+        impl = factory(n, T());
         this->n = n;
     }
 
@@ -106,7 +80,7 @@ struct FFT
     void transform_real(std::complex<T> *out, const T *in)
     {
         scramble(out, in, n);
-        impl->transform<false>((T*)out);
+        impl->template transform<false>((T*)out);
     }
 
     ///@brief Computes forward transform of interleaved real data.
@@ -117,18 +91,18 @@ struct FFT
     {
         scramble((T*)out,   in1, n, 2);
         scramble((T*)out+1, in2, n, 2);
-        impl->transform<false>((T*)out);
+        impl->template transform<false>((T*)out);
     }
 
     int size() const { return n; }
 
 private:
     int n = 0;
-    std::shared_ptr<impl::FFTBase<T>> impl;
+    FFTImplPtr<T> impl;
 };
 
 ///@brief Column-wise 1D FFT for multiple columns
-///@typeparam T scalar type
+///@tparam T scalar type
 template <class T>
 struct FFTVert
 {
@@ -202,7 +176,7 @@ private:
 };
 
 ///@brief 2D FFT
-///@typeparam T scalar type
+///@tparam T scalar type
 template <class T>
 class FFT2D
 {

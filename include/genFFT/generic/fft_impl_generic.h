@@ -24,58 +24,19 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef GEN_FFT_LEVEL_H
-#define GEN_FFT_LEVEL_H
+#ifndef GENFFT_IMPL_GENERIC_H
+#define GENFFT_IMPL_GENERIC_H
 
-#if (defined(_OPENMP) && (_OPENMP >= 201307L)) || (defined(_OPENMP_SIMD) && (_OPENMP_SIMD >= 201307L))
-#define FFT_OPENMP_SIMD
-#endif
-
-#include "FFTUtil.h"
-#include "FFTTwiddle.h"
-
-#include <memory>
+#include <cassert>
+#include "../FFTTwiddle.h"
 
 namespace genfft {
-namespace impl {
-
-// Single-row FFT
-template <class T>
-struct FFTBase
-{
-    virtual ~FFTBase() {}
-
-    template <bool inv>
-    inline void transform(T *data)
-    {
-        if (inv)
-            inverse(data);
-        else
-            forward(data);
-    }
-
-    virtual void forward(T *)=0;
-    virtual void inverse(T *)=0;
-};
-
-template <int N, class T>
-struct FFTImplSelector;
-
-template <int N, class T>
-struct FFTImpl : FFTBase<T>, FFTImplSelector<N, T>::type
-{
-    typedef typename FFTImplSelector<N, T>::type Impl;
-    void forward(T *data) override { Impl::template transform_impl<false>(data); }
-    void inverse(T *data) override { Impl::template transform_impl<true>(data); }
-};
-
-template <int N, class T>
-struct FFTLevel;
+namespace impl_generic {
 
 template <int N, class T>
 struct FFTGeneric
 {
-    FFTLevel<N/2, T> next;
+    FFTGeneric<N/2, T> next;
     template <bool inv>
     void transform_impl(T *data)
     {
@@ -160,88 +121,12 @@ struct FFTGeneric<1, T>
     void transform_impl(T *) {}
 };
 
-template <int N, class T>
-struct FFTImplSelector
-{
-    typedef FFTGeneric<N, T> type;
-};
 
-template <int N, class T>
-struct FFTLevel : FFTImpl<N, T>
-{
-    void *operator new(size_t count)
-    {
-        return aligned_alloc(alignof(FFTLevel), count);
-    }
-    void operator delete(void *p)
-    {
-        free(p);
-    }
-
-
-    static std::shared_ptr<FFTLevel> GetInstance()
-    {
-        auto shptr = instance.lock();
-        if (!shptr)
-        {
-            shptr.reset(new FFTLevel());
-            instance = shptr;
-        }
-        return shptr;
-    }
-
-private:
-    static std::weak_ptr<FFTLevel> instance;
-};
-
-template <int N, class T>
-std::weak_ptr<FFTLevel<N, T>> FFTLevel<N, T>::instance;
-
-// Vertical multi-column FFT
-
-template <class T>
-inline int convenient_col_num(int cols)
-{
-    return cols;
-}
-
-template <class T>
-struct FFTVertBase
-{
-    virtual ~FFTVertBase() {}
-
-    template <bool inv>
-    inline void transform(T *data, int stride, int columns)
-    {
-        if (inv)
-            inverse(data, stride, columns);
-        else
-            forward(data, stride, columns);
-    }
-
-    virtual void forward(T *data, int stride, int columns)=0;
-    virtual void inverse(T *data, int stride, int columns)=0;
-};
-
-template <int N, class T>
-struct FFTVertImplSelector;
-
-template <int N, class T>
-struct FFTVertImpl : FFTVertBase<T>, FFTVertImplSelector<N, T>::type
-{
-    typedef typename FFTVertImplSelector<N, T>::type Impl;
-    void forward(T *data, int stride, int columns) override { return Impl::template transform_impl<false>(data, stride, columns); }
-    void inverse(T *data, int stride, int columns) override { return Impl::template transform_impl<true>(data, stride, columns); }
-};
-
-
-template <int N, class T>
-struct FFTVertLevel;
 
 template <int N, class T>
 struct FFTVertGeneric
 {
-    FFTVertLevel<N/2, T> next;
+    FFTVertGeneric<N/2, T> next;
 
     template <bool inv>
     void transform_impl(T *data, int stride, int columns)
@@ -350,45 +235,42 @@ struct FFTVertGeneric<1, T>
     void transform_impl(T*, int, int) {}
 };
 
-template <int N, class T>
-struct FFTVertImplSelector
+template <class T>
+inline std::shared_ptr<impl::FFTBase<T>> GetImpl(int n, T)
 {
-    typedef FFTVertGeneric<N, T> type;
-};
-
-
-template <int N, class T>
-struct FFTVertLevel : FFTVertImpl<N, T>
-{
-    void *operator new(size_t count)
-    {
-        return aligned_alloc(alignof(FFTVertLevel), count);
+    switch (n) {
+#define SELECT_FFT_LEVEL(x) case (1<<x): return impl::FFTLevel<(1<<x), T, FFTGeneric<(1<<x), T>>::GetInstance();
+            SELECT_FFT_LEVEL(0);
+            SELECT_FFT_LEVEL(1);
+            SELECT_FFT_LEVEL(2);
+            SELECT_FFT_LEVEL(3);
+            SELECT_FFT_LEVEL(4);
+            SELECT_FFT_LEVEL(5);
+            SELECT_FFT_LEVEL(6);
+            SELECT_FFT_LEVEL(7);
+            SELECT_FFT_LEVEL(8);
+            SELECT_FFT_LEVEL(9);
+            SELECT_FFT_LEVEL(10);
+            SELECT_FFT_LEVEL(11);
+            SELECT_FFT_LEVEL(12);
+            SELECT_FFT_LEVEL(13);
+            SELECT_FFT_LEVEL(14);
+            SELECT_FFT_LEVEL(15);
+            SELECT_FFT_LEVEL(16);
+            SELECT_FFT_LEVEL(17);
+            SELECT_FFT_LEVEL(18);
+            SELECT_FFT_LEVEL(19);
+            SELECT_FFT_LEVEL(20);
+            SELECT_FFT_LEVEL(21);
+            SELECT_FFT_LEVEL(22);
+            SELECT_FFT_LEVEL(23);
+#undef SELECT_FFT_LEVEL
+        default:
+            assert(!"unsupported size");
     }
-    void operator delete(void *p)
-    {
-        free(p);
-    }
+}
 
-    static std::shared_ptr<FFTVertLevel> GetInstance()
-    {
-        auto shptr = instance.lock();
-        if (!shptr)
-        {
-            shptr.reset(new FFTVertLevel());
-            instance = shptr;
-        }
-        return shptr;
-    }
+}  // impl_generic
+}  // genfft
 
-private:
-    static std::weak_ptr<FFTVertLevel> instance;
-};
-
-template <int N, class T>
-std::weak_ptr<FFTVertLevel<N, T>> FFTVertLevel<N, T>::instance;
-
-} // impl
-} // genfft
-
-#endif /* GEN_FFT_LEVEL_H */
-
+#endif /* GENFFT_IMPL_GENERIC_H */

@@ -24,27 +24,71 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef FFTDECL_H
-#define FFTDECL_H
+#ifndef GEN_FFT_TWIDDLE_H
+#define GEN_FFT_TWIDDLE_H
 
-#include "FFTComplex.h"
-#include <complex>
+#include <stdlib.h>
+#include <cmath>
+#include <utility>
 
 namespace genfft {
 
-template <class T>
-struct FFT;
+template <int _N, class T>
+struct Twiddle
+{
+    static constexpr int N = _N;
+    T operator[](int i) const { return t[i]; }
+    alignas(32) T t[N];
+    Twiddle()
+    {
+        for (int i=0; i<N; i+=2)
+        {
+            t[i]   =  std::cos(M_PI*i/N);
+            t[i+1] = -std::sin(M_PI*i/N);
+        }
+    }
+};
 
 template <class T>
-struct FFTVert;
+struct Twiddle<-1, T>
+{
+    T operator[](int i) const { return t[i]; }
+    T *t = nullptr;
+    int N = 0;
 
-template <class T>
-class FFT2D;
+    Twiddle() = default;
+    explicit Twiddle(int n) : N(n)
+    {
+        t = static_cast<T*>(aligned_alloc(32, N*sizeof(T)));
+        for (int i=0; i<N; i+=2)
+        {
+            t[i]   =  std::cos(M_PI*i/N);
+            t[i+1] = -std::sin(M_PI*i/N);
+        }
+    }
 
-template <class T>
-void separate_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const std::complex<T> *in, int N);
+    Twiddle(const Twiddle &) = delete;
+    Twiddle(Twiddle &&other) : t(other.t), N(other.N)
+    {
+        other.t = nullptr;
+        other.N = 0;
+    }
+
+    Twiddle &operator=(const Twiddle &) = delete;
+    Twiddle &operator=(Twiddle &other)
+    {
+        std::swap(t, other.t);
+        std::swap(N, other.N);
+        return *this;
+    }
+
+    ~Twiddle()
+    {
+        free(t);
+        t = nullptr;
+    }
+};
 
 } // genfft
 
-#endif /* FFTDECL_H */
-
+#endif /* GEN_FFT_TWIDDLE_H */
