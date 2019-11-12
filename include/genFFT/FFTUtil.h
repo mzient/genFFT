@@ -75,8 +75,8 @@ void scramble(T *out, const U *in, int N, int stride = 1)
     case 512:
         static_scramble<512, T, U>(out, in, stride); break;
     default:
-        scramble<T, U>(out,          in,       N/2, 2*stride);
-        scramble<T, U>(out + stride, in + N/2, N/2, 2*stride);
+        scramble<T, U>(out,          in,            N >> 1, stride << 1);
+        scramble<T, U>(out + stride, in + (N >> 1), N >> 1, stride << 1);
         break;
     }
 }

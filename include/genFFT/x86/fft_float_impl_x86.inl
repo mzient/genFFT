@@ -104,17 +104,17 @@ struct FFTFloat
     template <bool inv>
     void transform_impl(float *data)
     {
-        next.template transform_impl<inv>(data);
         next.template transform_impl<inv>(data+N);
+        next.template transform_impl<inv>(data);
 
 #ifdef GENFFT_USE_AVX
-        for (unsigned i=0; i<N; i+=8)
+        for (int i=0; i<N; i+=8)
         {
             __m256 W = _mm256_load_ps(twiddle.t + i);
             __m256 E = _mm256_loadu_ps(data+i);
             __m256 O = _mm256_loadu_ps(data+i+N);
-            __m256 Wr = _mm256_moveldup_ps(W);
             __m256 Wi = _mm256_movehdup_ps(W);
+            __m256 Wr = _mm256_moveldup_ps(W);
 
             __m256 OxWi = _mm256_mul_ps(O, Wi);
             __m256 OxWiperm = _mm256_permute_ps(OxWi, _MM_SHUFFLE(2, 3, 0, 1));
@@ -132,7 +132,7 @@ struct FFTFloat
             _mm256_storeu_ps(data + i + N, hi);
         }
 #elif defined GENFFT_USE_SSE
-        for (unsigned i=0; i<N; i+=4)
+        for (int i=0; i<N; i+=4)
         {
             __m128 W = _mm_load_ps(twiddle.t + i);
             __m128 E = _mm_loadu_ps(data+i);
@@ -200,6 +200,42 @@ struct FFTFloat<4>
 #endif
     }
 
+#ifdef GENFFT_USE_AVX
+    template <bool inv>
+    void transform_2x(__m256 &E, __m256 &O, float *data)
+    {
+        __m128 x0 = _mm_loadu_ps(data);
+        __m128 x1 = _mm_loadu_ps(data+4);
+        __m128 x2 = _mm_loadu_ps(data+8);
+        __m128 x3 = _mm_loadu_ps(data+12);
+        __m256 x02 = _mm256_insertf128_ps(_mm256_castps128_ps256(x0), x2, 1);
+        __m256 x13 = _mm256_insertf128_ps(_mm256_castps128_ps256(x1), x3, 1);
+
+        __m256 xa = _mm256_shuffle_ps(x02, x13, _MM_SHUFFLE(1, 0, 1, 0));
+        __m256 xb = _mm256_shuffle_ps(x02, x13, _MM_SHUFFLE(3, 2, 3, 2));
+
+        __m256 ya = _mm256_add_ps(xa, xb);
+        __m256 yb = _mm256_sub_ps(xa, xb);
+
+        // flip sign in one lane
+        __m256 mask = _mm256_castsi256_ps(inv
+            ? _mm256_set_epi32(0x80000000u, 0, 0, 0, 0x80000000u, 0, 0, 0)
+            : _mm256_set_epi32(0, 0x80000000u, 0, 0, 0, 0x80000000u, 0, 0));
+        yb = _mm256_xor_ps(yb, mask);
+
+        __m256 za = _mm256_shuffle_ps(ya, yb, _MM_SHUFFLE(1, 0, 1, 0));
+        __m256 zb = _mm256_shuffle_ps(ya, yb, _MM_SHUFFLE(2, 3, 3, 2));
+
+        ya = _mm256_add_ps(za, zb);
+        yb = _mm256_sub_ps(za, zb);
+
+        __m256 yba = _mm256_permute2f128_ps(ya, yb, 0x21);
+
+        E = _mm256_blend_ps(ya, yba, 0xf0);
+        O = _mm256_blend_ps(yb, yba, 0x0f);
+    }
+#endif
+
     template <bool inv>
     void transform_impl(float *data)
     {
@@ -218,8 +254,13 @@ struct FFTFloat<8>
     template <bool inv>
     void transform_impl(float *data)
     {
-        float8 E = next.transform_1x<inv>(data);
+#ifdef GENFFT_USE_AVX
+        float8 E, O;
+        next.transform_2x<inv>(E, O, data);
+#else
         float8 O = next.transform_1x<inv>(data+N);
+        float8 E = next.transform_1x<inv>(data);
+#endif
 
         __m256 OxW;
 
@@ -272,7 +313,7 @@ struct FFTVertFloat
         next.template transform_impl<inv>(data,      stride, cols);
         next.template transform_impl<inv>(data+half, stride, cols);
 
-        for (unsigned i=0; i<N/2; i++)
+        for (int i=0; i<N/2; i++)
         {
             float *even = data + i*stride;
             float *odd  = even + half;

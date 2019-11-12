@@ -43,17 +43,15 @@ struct FFTGeneric
         next.template transform_impl<inv>(data);
         next.template transform_impl<inv>(data+N);
 
-        T tempr, tempi;
-
 #ifdef FFT_OPENMP_SIMD
         #pragma omp simd
 #endif
-        for (unsigned i=0; i<N; i+=2)
+        for (int i=0; i<N; i+=2)
         {
             T wr = twiddle[i];
             T wi = twiddle[i+1];
-            tempr = inv ? data[i+N]*wr + data[i+N+1]*wi : data[i+N]*wr - data[i+N+1]*wi;
-            tempi = inv ? data[i+N+1]*wr - data[i+N]*wi : data[i+N]*wi + data[i+N+1]*wr;
+            T tempr = inv ? data[i+N]*wr + data[i+N+1]*wi : data[i+N]*wr - data[i+N+1]*wi;
+            T tempi = inv ? data[i+N+1]*wr - data[i+N]*wi : data[i+N]*wi + data[i+N+1]*wr;
             data[i+N]   = data[i]-tempr;
             data[i+N+1] = data[i+1]-tempi;
             data[i]     += tempr;
@@ -135,7 +133,7 @@ struct FFTVertGeneric
         next.template transform_impl<inv>(data,      stride, columns);
         next.template transform_impl<inv>(data+half, stride, columns);
 
-        for (unsigned i=0; i<N/2; i++)
+        for (int i=0; i<N/2; i++)
         {
             T wr = twiddle[2*i];
             T wi = twiddle[2*i+1];

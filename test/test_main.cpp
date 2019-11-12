@@ -27,6 +27,16 @@ void PrintCPUFeatures()
 }
 #endif
 
+#include <immintrin.h>
+
+void print(__m256 x) {
+    float f[8];
+    _mm256_storeu_ps(f, x);
+    for (int i = 0; i < 8; i++)
+        std::cerr << f[i] << " ";
+    std::cerr << std::endl;
+}
+
 int main(int argc, char *argv[])
 {
     PrintCPUFeatures();

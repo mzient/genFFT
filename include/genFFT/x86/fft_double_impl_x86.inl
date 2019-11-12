@@ -109,7 +109,7 @@ struct FFTDouble
         next.template transform_impl<inv>(data+N);
 
 #ifdef GENFFT_USE_AVX
-        for (unsigned i=0; i<N; i+=4)
+        for (int i=0; i<N; i+=4)
         {
             __m256d W = _mm256_load_pd(twiddle.t + i);
             __m256d E = _mm256_loadu_pd(data+i);
@@ -133,7 +133,7 @@ struct FFTDouble
             _mm256_storeu_pd(data + i + N, hi);
         }
 #elif defined GENFFT_USE_SSE2
-        for (unsigned i=0; i<N; i+=2)
+        for (int i=0; i<N; i+=2)
         {
             __m128d W = _mm_load_pd(twiddle.t + i);
             __m128d E = _mm_loadu_pd(data+i);
@@ -218,7 +218,7 @@ struct FFTVertDouble
         next.template transform_impl<inv>(data,      stride, cols);
         next.template transform_impl<inv>(data+half, stride, cols);
 
-        for (unsigned i=0; i<N/2; i++)
+        for (int i=0; i<N/2; i++)
         {
             double *even = data + i*stride;
             double *odd  = even + half;
