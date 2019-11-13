@@ -27,8 +27,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef GENFFT_TEST_REFERENCE_H
 #define GENFFT_TEST_REFERENCE_H
 
+#include <cassert>
 #include <cmath>
 #include <complex>
+#include <vector>
 
 namespace reference_impl {
 
@@ -94,12 +96,13 @@ void FFT_pow2(std::complex<T> *out, const U *in, int n, bool inv)
 }
 
 template <typename T>
-void DFT(std::complex<T> *out, const std::complex<T> *in, int n)
+void DFT(std::complex<T> *out, const std::complex<T> *in, int n, bool inv)
 {
+    double den = inv ? 2*M_PI / n : -2*M_PI / n;
     for (int i = 0; i < n; i++)
     {
         std::complex<double> c = 0;
-        double a = 0, da = (double)i / n;
+        double a = 0, da = (double)i * den;
         for (int j = 0; j < n; j++, a += da)
         {
             std::complex<double> t = { std::cos(a), std::sin(a) };
