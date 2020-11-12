@@ -130,27 +130,34 @@ struct FFTVertGeneric
     void transform_impl(T *data, int stride, int columns)
     {
         const int half = N/2*stride;
-        next.template transform_impl<inv>(data,      stride, columns);
-        next.template transform_impl<inv>(data+half, stride, columns);
-
-        for (int i=0; i<N/2; i++)
+        int next_col = columns;
+        for (int col=0; col<columns; col=next_col)
         {
-            T wr = twiddle[2*i];
-            T wi = twiddle[2*i+1];
-            T *even = data + i*stride;
-            T *odd =  even + half;
-#ifdef FFT_OPENMP_SIMD
-            #pragma omp simd
-#endif
-            for (int j=0; j<2*columns; j+=2)
+            next_col = columns - col < 48 ? col + 32 : columns;
+            int span_width = next_col - col;
+            T *span_data = data + col;
+            next.template transform_impl<inv>(span_data,      stride, span_width);
+            next.template transform_impl<inv>(span_data+half, stride, span_width);
+
+            for (int i=0; i<N/2; i++)
             {
-                T tempr, tempi;
-                tempr = inv ? odd[j]*wr + odd[j+1]*wi : odd[j]*wr - odd[j+1]*wi;
-                tempi = inv ? odd[j+1]*wr - odd[j]*wi : odd[j+1]*wr + odd[j]*wi;
-                odd[j]    = even[j]-tempr;
-                odd[j+1]  = even[j+1]-tempi;
-                even[j]   += tempr;
-                even[j+1] += tempi;
+                T wr = twiddle[2*i];
+                T wi = twiddle[2*i+1];
+                T *even = span_data + i*stride;
+                T *odd =  even + half;
+#ifdef FFT_OPENMP_SIMD
+                #pragma omp simd
+#endif
+                for (int j=0; j<2*span_width; j+=2)
+                {
+                    T tempr, tempi;
+                    tempr = inv ? odd[j]*wr + odd[j+1]*wi : odd[j]*wr - odd[j+1]*wi;
+                    tempi = inv ? odd[j+1]*wr - odd[j]*wi : odd[j+1]*wr + odd[j]*wi;
+                    odd[j]    = even[j]-tempr;
+                    odd[j+1]  = even[j+1]-tempi;
+                    even[j]   += tempr;
+                    even[j+1] += tempi;
+                }
             }
         }
     }
@@ -236,8 +243,45 @@ struct FFTVertGeneric<1, T>
 template <class T>
 inline std::shared_ptr<impl::FFTBase<T>> GetImpl(int n, T)
 {
-    switch (n) {
+    switch (n)
+    {
 #define SELECT_FFT_LEVEL(x) case (1<<x): return impl::FFTLevel<(1<<x), T, FFTGeneric<(1<<x), T>>::GetInstance();
+            SELECT_FFT_LEVEL(0);
+            SELECT_FFT_LEVEL(1);
+            SELECT_FFT_LEVEL(2);
+            SELECT_FFT_LEVEL(3);
+            SELECT_FFT_LEVEL(4);
+            SELECT_FFT_LEVEL(5);
+            SELECT_FFT_LEVEL(6);
+            SELECT_FFT_LEVEL(7);
+            SELECT_FFT_LEVEL(8);
+            SELECT_FFT_LEVEL(9);
+            SELECT_FFT_LEVEL(10);
+            SELECT_FFT_LEVEL(11);
+            SELECT_FFT_LEVEL(12);
+            SELECT_FFT_LEVEL(13);
+            SELECT_FFT_LEVEL(14);
+            SELECT_FFT_LEVEL(15);
+            SELECT_FFT_LEVEL(16);
+            SELECT_FFT_LEVEL(17);
+            SELECT_FFT_LEVEL(18);
+            SELECT_FFT_LEVEL(19);
+            SELECT_FFT_LEVEL(20);
+            SELECT_FFT_LEVEL(21);
+            SELECT_FFT_LEVEL(22);
+            SELECT_FFT_LEVEL(23);
+#undef SELECT_FFT_LEVEL
+        default:
+            assert(!"unsupported size");
+    }
+}
+
+template <class T>
+inline std::shared_ptr<impl::FFTVertBase<T>> GetVertImpl(int n, T)
+{
+    switch (n)
+    {
+#define SELECT_FFT_LEVEL(x) case (1<<x): return impl::FFTVertLevel<(1<<x), T, FFTVertGeneric<(1<<x), T>>::GetInstance();
             SELECT_FFT_LEVEL(0);
             SELECT_FFT_LEVEL(1);
             SELECT_FFT_LEVEL(2);

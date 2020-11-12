@@ -1,5 +1,5 @@
 /*
-Copyright 2017-2019 Michal Zientkiewicz
+Copyright (C) 2019 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -22,21 +22,36 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 */
 
-#ifndef GENFFT_X86_DISPATCH_H
-#define GENFFT_X86_DISPATCH_H
+#ifndef GEN_FFT_ALLOC_H
+#define GEN_FFT_ALLOC_H
+
+#include <stdlib.h>
+#include <type_traits>
 
 namespace genfft {
-namespace impl_x86_dispatch {
 
-std::shared_ptr<impl::FFTBase<float>> GetImpl(int n, float);
-std::shared_ptr<impl::FFTBase<double>> GetImpl(int n, double);
+template <typename T>
+inline typename std::enable_if<std::is_integral<T>::value, T>::type
+align(T value, T alignment)
+{
+    return (value + alignment - 1)&-alignment;
+}
 
-std::shared_ptr<impl::FFTVertBase<float>> GetVertImpl(int n, float);
-std::shared_ptr<impl::FFTVertBase<double>> GetVertImpl(int n, double);
+inline void *aligned_alloc_raw(size_t bytes, size_t alignment = 32)
+{
+    bytes = align(bytes, alignment);
+    return aligned_alloc(alignment, bytes);
+}
 
-} // impl_x86_dispatch
+template <typename T>
+T *aligned_alloc_T(size_t N, size_t alignment = alignof(T))
+{
+    return static_cast<T*>(aligned_alloc_raw(N * sizeof(T), alignment));
+}
+
 } // genfft
 
-#endif /* GENFFT_X86_DISPATCH_H */
+#endif // GEN_FFT_ALLOC_H

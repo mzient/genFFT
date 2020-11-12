@@ -24,8 +24,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef GENFFT_TEST_REFERENCE_H
-#define GENFFT_TEST_REFERENCE_H
+#ifndef GENFFT_TEST_REF_IMPL_H
+#define GENFFT_TEST_REF_IMPL_H
 
 #include <cassert>
 #include <cmath>
@@ -76,14 +76,14 @@ void FFT_pow2_inplace(std::complex<T> *out, int n, bool inv, int repeat = 1)
 }
 
 template <typename T, typename U>
-void scramble(T *out, const U *in, int N, int stride = 1)
+void scramble(T *out, const U *in, int N, int out_stride = 1, int in_stride = 1)
 {
     if (N == 1)
         *out = *in;
     else
     {
-        scramble<T, U>(out,          in,            N >> 1, stride << 1);
-        scramble<T, U>(out + stride, in + (N >> 1), N >> 1, stride << 1);
+        scramble<T, U>(out,              in,                        N >> 1, out_stride << 1, in_stride);
+        scramble<T, U>(out + out_stride, in + (N >> 1) * in_stride, N >> 1, out_stride << 1, in_stride);
     }
 }
 
@@ -94,6 +94,28 @@ void FFT_pow2(std::complex<T> *out, const U *in, int n, bool inv)
     scramble(out, in, n);
     FFT_pow2_inplace(out, n, inv);
 }
+
+template <typename T, typename U>
+void FFT_pow2_vert(std::complex<T> *out, int out_stride, const U *in, int in_stride, int n, int cols, bool inv)
+{
+    assert((n & (n-1)) == 0);
+    std::vector<std::complex<T>> tmp(n);
+    for (int col = 0; col < cols; col++)
+    {
+        scramble(tmp.data(), in + col, n, 1, in_stride);
+        FFT_pow2_inplace(tmp.data(), n, inv);
+        for (int i = 0; i < n; i++)
+            out[col + i * out_stride] = tmp[i];
+    }
+}
+
+
+template <typename T, typename U>
+void FFT_pow2_vert(std::complex<T> *out, const U *in, int n, int cols, bool inv)
+{
+    FFT_pow2_vert(out, cols, in, cols, n, cols, inv);
+}
+
 
 template <typename T>
 void DFT(std::complex<T> *out, const std::complex<T> *in, int n, bool inv)
@@ -114,4 +136,4 @@ void DFT(std::complex<T> *out, const std::complex<T> *in, int n, bool inv)
 
 } // reference_impl
 
-#endif // GENFFT_TEST_REFERENCE_H
+#endif // GENFFT_TEST_REF_IMPL_H

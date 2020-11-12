@@ -27,38 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _GENFFT_X86_H
 #define _GENFFT_X86_H
 
-#ifdef __SSE__
-#include <xmmintrin.h>
-
-#define GENFFT_USE_SSE
-#endif
-
-#ifdef __SSE3__
-#define GENFFT_USE_SSE3
-#include <emmintrin.h>
-#endif
-
-#ifdef __SSE4_1__
-#include <smmintrin.h>
-
-#endif
-
-#if defined(__AVX__) || defined(__AVX2__) || defined(__FMA__)
-#include <immintrin.h>
-#endif
-
-#ifdef __AVX__
-#define GENFFT_USE_AVX
-#endif
-
-#ifdef __FMA__
-#define GENFFT_USE_FMA
-#endif
-
-#ifdef __AVX2__
-#define GENFFT_USE_AVX2
-#endif
-
+#include "fft_x86_preproc.h"
 #include "../FFTTwiddle.h"
 
 namespace genfft {

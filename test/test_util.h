@@ -1,5 +1,5 @@
 /*
-Copyright 2017-2019 Michal Zientkiewicz
+Copyright 2019-2020 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -24,19 +24,51 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef GENFFT_X86_DISPATCH_H
-#define GENFFT_X86_DISPATCH_H
+#ifndef GENFFT_TEST_TEST_UTIL_H
+#define GENFFT_TEST_TEST_UTIL_H
 
-namespace genfft {
-namespace impl_x86_dispatch {
+#include <vector>
+#include <complex>
+#include <random>
 
-std::shared_ptr<impl::FFTBase<float>> GetImpl(int n, float);
-std::shared_ptr<impl::FFTBase<double>> GetImpl(int n, double);
+#include "fft_ref_impl.h"
 
-std::shared_ptr<impl::FFTVertBase<float>> GetVertImpl(int n, float);
-std::shared_ptr<impl::FFTVertBase<double>> GetVertImpl(int n, double);
+template <typename T>
+void DummyData(std::vector<std::complex<T>> &vec, bool real)
+{
+    std::mt19937_64 rng;
+    std::uniform_real_distribution<T> dist(-1, 1);
 
-} // impl_x86_dispatch
-} // genfft
+    for (auto &c : vec)
+    {
+        c.real(dist(rng));
+        c.imag(real ? 0 : dist(rng));
+    }
+}
 
-#endif /* GENFFT_X86_DISPATCH_H */
+template <typename T>
+void DummyData(std::vector<T> &vec)
+{
+    std::mt19937_64 rng;
+    std::uniform_real_distribution<T> dist(-1, 1);
+
+    for (auto &x : vec)
+        x = dist(rng);
+}
+
+template <typename T>
+constexpr double FFT_Eps(int n);
+
+template <>
+constexpr double FFT_Eps<double>(int n)
+{
+    return 1e-8 + n*1e-12;
+}
+
+template <>
+constexpr double FFT_Eps<float>(int n)
+{
+    return 1e-5 + n*1e-8;
+}
+
+#endif // GENFFT_TEST_TEST_UTIL_H

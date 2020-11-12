@@ -1,5 +1,5 @@
 /*
-Copyright 2017-2019 Michal Zientkiewicz
+Copyright 2017-2020 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -41,6 +41,11 @@ inline __m256 flip_even(__m256 a)
     const __m256 signmask = _mm256_castsi256_ps(_mm256_set_epi32(0, 0x80000000, 0, 0x80000000, 0, 0x80000000, 0, 0x80000000));
     return _mm256_xor_ps(a, signmask);
 }
+inline __m256 flip_odd(__m256 a)
+{
+    const __m256 signmask = _mm256_castsi256_ps(_mm256_set_epi32(0x80000000, 0, 0x80000000, 0, 0x80000000, 0, 0x80000000, 0));
+    return _mm256_xor_ps(a, signmask);
+}
 #else
 struct alignas(__m128) float8 { __m128 lo, hi; };
 inline float8 load(const float *addr)
@@ -60,6 +65,13 @@ inline __m128 flip_even(__m128 a)
     const __m128 signmask = _mm_castsi128_ps(_mm_set_epi32(0, 0x80000000, 0, 0x80000000));
     return _mm_xor_ps(a, signmask);
 }
+
+inline __m128 flip_odd(__m128 x)
+{
+    const __m128 signmask = _mm_castsi128_ps(_mm_set_epi32(0x80000000, 0, 0x80000000, 0));
+    return _mm_xor_ps(x, signmask);
+}
+
 
 #ifdef GENFFT_USE_SSE3
 inline __m128 addsub(__m128 a, __m128 b)
@@ -516,8 +528,45 @@ struct FFTVertFloat<2>
 
 inline std::shared_ptr<impl::FFTBase<float>> GetImpl(int n, float)
 {
-    switch (n) {
+    switch (n)
+    {
 #define SELECT_FFT_LEVEL(x) case (1<<x): return impl::FFTLevel<(1<<x), float, FFTFloat<(1<<x)>>::GetInstance();
+            SELECT_FFT_LEVEL(0);
+            SELECT_FFT_LEVEL(1);
+            SELECT_FFT_LEVEL(2);
+            SELECT_FFT_LEVEL(3);
+            SELECT_FFT_LEVEL(4);
+            SELECT_FFT_LEVEL(5);
+            SELECT_FFT_LEVEL(6);
+            SELECT_FFT_LEVEL(7);
+            SELECT_FFT_LEVEL(8);
+            SELECT_FFT_LEVEL(9);
+            SELECT_FFT_LEVEL(10);
+            SELECT_FFT_LEVEL(11);
+            SELECT_FFT_LEVEL(12);
+            SELECT_FFT_LEVEL(13);
+            SELECT_FFT_LEVEL(14);
+            SELECT_FFT_LEVEL(15);
+            SELECT_FFT_LEVEL(16);
+            SELECT_FFT_LEVEL(17);
+            SELECT_FFT_LEVEL(18);
+            SELECT_FFT_LEVEL(19);
+            SELECT_FFT_LEVEL(20);
+            SELECT_FFT_LEVEL(21);
+            SELECT_FFT_LEVEL(22);
+            SELECT_FFT_LEVEL(23);
+#undef SELECT_FFT_LEVEL
+        default:
+            assert(!"unsupported size");
+    }
+}
+
+
+inline std::shared_ptr<impl::FFTVertBase<float>> GetVertImpl(int n, float)
+{
+    switch (n)
+    {
+#define SELECT_FFT_LEVEL(x) case (1<<x): return impl::FFTVertLevel<(1<<x), float, FFTVertFloat<(1<<x)>>::GetInstance();
             SELECT_FFT_LEVEL(0);
             SELECT_FFT_LEVEL(1);
             SELECT_FFT_LEVEL(2);

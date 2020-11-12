@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     namespace genfft {
     namespace backend {
         using impl_x86_dispatch::GetImpl;
+        using impl_x86_dispatch::GetVertImpl;
     } // backend
     } // genfft
     #else
@@ -51,6 +52,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     namespace genfft {
     namespace backend {
         using impl_native::GetImpl;
+        using impl_native::GetVertImpl;
     } // backend
     } // genfft
     #endif
@@ -59,6 +61,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     namespace genfft {
     namespace backend {
         using impl_generic::GetImpl;
+        using impl_generic::GetVertImpl;
     } // backend
     } // genfft
 #endif

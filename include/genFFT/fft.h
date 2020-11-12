@@ -1,5 +1,5 @@
 /*
-Copyright 2017-2019 Michal Zientkiewicz
+Copyright 2017-2020 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -39,7 +39,11 @@ namespace genfft {
 template <typename T>
 using FFTImplPtr = std::shared_ptr<impl::FFTBase<T>>;
 template <typename T>
+using FFTVertImplPtr = std::shared_ptr<impl::FFTVertBase<T>>;
+template <typename T>
 using FFTImplFactory = FFTImplPtr<T>(int n, T);
+template <typename T>
+using FFTVertImplFactory = FFTVertImplPtr<T>(int n, T);
 
 ///@brief A 1D FFT for densely packed data
 ///@tparam T scalar type
@@ -103,50 +107,20 @@ private:
 
 ///@brief Column-wise 1D FFT for multiple columns
 ///@tparam T scalar type
-template <class T>
+template <class T, FFTVertImplFactory<T> *factory = backend::GetVertImpl>
 struct FFTVert
 {
     FFTVert()=default;
     FFTVert(int n)
     {
-        switch (n)
-        {
-#define SELECT_FFT_LEVEL(x) case (1<<x): impl = impl::FFTVertLevel<(1<<x), T>::GetInstance(); break;
-            SELECT_FFT_LEVEL(0);
-            SELECT_FFT_LEVEL(1);
-            SELECT_FFT_LEVEL(2);
-            SELECT_FFT_LEVEL(3);
-            SELECT_FFT_LEVEL(4);
-            SELECT_FFT_LEVEL(5);
-            SELECT_FFT_LEVEL(6);
-            SELECT_FFT_LEVEL(7);
-            SELECT_FFT_LEVEL(8);
-            SELECT_FFT_LEVEL(9);
-            SELECT_FFT_LEVEL(10);
-            SELECT_FFT_LEVEL(11);
-            SELECT_FFT_LEVEL(12);
-            SELECT_FFT_LEVEL(13);
-            SELECT_FFT_LEVEL(14);
-            SELECT_FFT_LEVEL(15);
-            SELECT_FFT_LEVEL(16);
-            SELECT_FFT_LEVEL(17);
-            SELECT_FFT_LEVEL(18);
-            SELECT_FFT_LEVEL(19);
-            SELECT_FFT_LEVEL(20);
-            SELECT_FFT_LEVEL(21);
-            SELECT_FFT_LEVEL(22);
-            SELECT_FFT_LEVEL(23);
-#undef SELECT_FFT_LEVEL
-        default:
-            assert(!"unsupported size");
-        }
+        impl = factory(n, T());
         this->n = n;
     }
 
     ///@brief Computes transform without data reordering
     ///@tparam inv if true, computes inverse transform
     ///@param data data array
-    ///@param stride row stride, in complex elements, of the data array
+    ///@param stride row stride, in complex numbers, of the data array
     ///@param cols row length
     template <bool inv>
     void transform_no_scramble(std::complex<T> *data, int stride, int cols)
@@ -157,15 +131,30 @@ struct FFTVert
     ///@brief Computes transform
     ///@tparam inv if true, computes inverse transform
     ///@param out output array, must not be equal to in
-    ///@param out_stride stride, in complex elements, of the output array
+    ///@param out_stride stride, in complex numbers, of the output array
     ///@param in input array
-    ///@param in_stride stride, in complex elements, of the input array
+    ///@param in_stride stride, in complex numbers, of the input array
     ///@param cols row length
     template <bool inv>
     void transform(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride, int cols)
     {
         scramble_rows((complex<T>*)out, out_stride, (const complex<T>*)in, in_stride, n, cols);
-        impl->template transform<inv>(out, out_stride, cols);
+        impl->template transform<inv>((T*)out, 2*out_stride, cols);
+    }
+
+
+    ///@brief Computes transform
+    ///@tparam inv if true, computes inverse transform
+    ///@param out output array, must not be equal to in
+    ///@param out_stride stride, in complex elements, of the output array
+    ///@param in input array
+    ///@param in_stride stride, in complex elements, of the input array
+    ///@param cols row length
+    template <bool inv>
+    void transform(std::complex<T> *out, const std::complex<T> *in, int cols)
+    {
+        scramble_rows((complex<T>*)out, cols, (const complex<T>*)in, cols, n, cols);
+        impl->template transform<inv>((T*)out, 2*cols, cols);
     }
 
     int size() const { return n; }

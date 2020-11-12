@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #include "FFTUtil.h"
+#include "FFTAlloc.h"
 
 #include <memory>
 
@@ -62,7 +63,7 @@ struct FFTLevel : FFTBase<T>, Impl
 {
     void *operator new(size_t count)
     {
-        return aligned_alloc(alignof(FFTLevel), count);
+        return aligned_alloc_raw(count, alignof(FFTLevel));
     }
     void operator delete(void *p)
     {
@@ -116,15 +117,13 @@ struct FFTVertBase
     virtual void inverse(T *data, int stride, int columns)=0;
 };
 
-template <int N, class T>
-struct FFTVertImplSelector;
 
-template <int N, class T, class Impl = typename FFTVertImplSelector<N, T>::type>
+template <int N, class T, class Impl>
 struct FFTVertLevel : FFTVertBase<T>, Impl
 {
     void *operator new(size_t count)
     {
-        return aligned_alloc(alignof(FFTVertLevel), count);
+        return aligned_alloc_raw(count, alignof(FFTVertLevel));
     }
     void operator delete(void *p)
     {

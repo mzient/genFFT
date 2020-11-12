@@ -30,14 +30,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <cmath>
 #include <utility>
+#include "FFTAlloc.h"
 
 namespace genfft {
 
+/// @brief Twiddling factors for FFT
 template <int _N, class T>
 struct Twiddle
 {
     static constexpr int N = _N;
-    T operator[](int i) const { return t[i]; }
+    constexpr inline T operator[](int i) const { return t[i]; }
     alignas(32) T t[N];
     Twiddle()
     {
@@ -49,17 +51,18 @@ struct Twiddle
     }
 };
 
+/// @brief Twiddling factors for FFT
 template <class T>
 struct Twiddle<-1, T>
 {
-    T operator[](int i) const { return t[i]; }
+    constexpr inline T operator[](int i) const { return t[i]; }
     T *t = nullptr;
     int N = 0;
 
     Twiddle() = default;
     explicit Twiddle(int n) : N(n)
     {
-        t = static_cast<T*>(aligned_alloc(32, N*sizeof(T)));
+        t = aligned_alloc_T<T>(N, 32);
         for (int i=0; i<N; i+=2)
         {
             t[i]   =  std::cos(M_PI*i/N);
@@ -87,6 +90,85 @@ struct Twiddle<-1, T>
         free(t);
         t = nullptr;
     }
+};
+
+
+/// @brief Twiddling factors for Decimation in Time (real input FFT)
+template <int _N, typename T>
+struct DITTwiddle
+{
+    static constexpr int N = _N;
+    constexpr T operator[](int i) const { return t[i]; }
+    static constexpr int pad = 32/sizeof(T) < 2 ? 2 : 32/sizeof(T);
+    alignas(32) T t[N/2+pad];
+
+    DITTwiddle()
+    {
+        Init();
+    }
+
+
+    explicit DITTwiddle(int n)
+    {
+        assert(n == N);
+        Init();
+    }
+
+    void Init()
+    {
+        for (int i=0; i<=N/2; i+=2)
+        {
+            t[i] = -std::sin(2*M_PI*i/N);
+            t[i+1] = -std::cos(2*M_PI*i/N);
+        }
+        for (int i=N/2; i<N/2+pad; i++)
+            t[i] = 0;
+    }
+};
+
+/// @brief Twiddling factors for Decimation in Time (real input FFT)
+template <typename T>
+struct DITTwiddle<-1, T>
+{
+    constexpr const T &operator[](int i) const { return t[i]; }
+    int N = 0;
+    T *t = nullptr;
+    static constexpr int pad = 32/sizeof(T) < 2 ? 2 : 32/sizeof(T);
+
+    DITTwiddle() = default;
+    explicit DITTwiddle(int n) : N(n)
+    {
+        t = aligned_alloc_T<T>(N/2+pad, 32);
+        for (int i=0; i<=N/2; i+=2)
+        {
+            t[i] = std::sin(M_PI*i/N);
+            t[i+1] = std::cos(M_PI*i/N);
+        }
+        for (int i=N/2; i<N/2+pad; i++)
+            t[i] = 0;
+    }
+
+    DITTwiddle(const DITTwiddle &) = delete;
+    DITTwiddle(DITTwiddle &&other) : t(other.t), N(other.N)
+    {
+        other.t = nullptr;
+        other.N = 0;
+    }
+
+    DITTwiddle &operator=(const DITTwiddle &) = delete;
+    DITTwiddle &operator=(DITTwiddle &&other)
+    {
+        std::swap(t, other.t);
+        std::swap(N, other.N);
+        return *this;
+    }
+
+    ~DITTwiddle()
+    {
+        free(t);
+        t = nullptr;
+    }
+
 };
 
 } // genfft

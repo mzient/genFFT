@@ -1,5 +1,5 @@
 /*
-Copyright 2017-2019 Michal Zientkiewicz
+Copyright 2019 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -24,19 +24,34 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef GENFFT_X86_DISPATCH_H
-#define GENFFT_X86_DISPATCH_H
+#ifdef __SSE__
+#include <xmmintrin.h>
 
-namespace genfft {
-namespace impl_x86_dispatch {
+#define GENFFT_USE_SSE
+#endif
 
-std::shared_ptr<impl::FFTBase<float>> GetImpl(int n, float);
-std::shared_ptr<impl::FFTBase<double>> GetImpl(int n, double);
+#ifdef __SSE3__
+#define GENFFT_USE_SSE3
+#include <emmintrin.h>
+#endif
 
-std::shared_ptr<impl::FFTVertBase<float>> GetVertImpl(int n, float);
-std::shared_ptr<impl::FFTVertBase<double>> GetVertImpl(int n, double);
+#ifdef __SSE4_1__
+#include <smmintrin.h>
 
-} // impl_x86_dispatch
-} // genfft
+#endif
 
-#endif /* GENFFT_X86_DISPATCH_H */
+#if defined(__AVX__) || defined(__AVX2__) || defined(__FMA__)
+#include <immintrin.h>
+#endif
+
+#ifdef __AVX__
+#define GENFFT_USE_AVX
+#endif
+
+#ifdef __FMA__
+#define GENFFT_USE_FMA
+#endif
+
+#ifdef __AVX2__
+#define GENFFT_USE_AVX2
+#endif

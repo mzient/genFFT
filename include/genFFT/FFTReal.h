@@ -206,6 +206,38 @@ private:
     FFTVert<T>      vert;
 };
 
+template <class T>
+struct FFT_DIT_base
+{
+
+    virtual ~FFT_DIT_base();
+};
+
+///@brief A 1D FFT for densely packed data
+///@tparam T scalar type
+template <class T, FFTImplFactory<T> *factory = backend::GetImpl>
+struct FFT_real
+{
+    FFT_real()=default;
+    FFT_real(int n)
+    {
+        if (n > 1)
+            impl = factory(n / 2, T());
+        this->n = n;
+    }
+
+    void forward(std::complex<T> *out, const T *in)
+    {
+
+    }
+
+    int size() const { return n; }
+
+private:
+    FFTImplPtr<T> impl;
+    int n = 0;
+};
+
 } // genFFT
 
 #endif /* FFTREAL_H */
