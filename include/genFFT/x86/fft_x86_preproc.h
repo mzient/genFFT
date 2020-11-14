@@ -30,9 +30,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GENFFT_USE_SSE
 #endif
 
+#ifdef __SSE2__
+#include <emmintrin.h>
+
+#define GENFFT_USE_SSE2
+#endif
+
 #ifdef __SSE3__
 #define GENFFT_USE_SSE3
-#include <emmintrin.h>
+#include <pmmintrin.h>
 #endif
 
 #ifdef __SSE4_1__

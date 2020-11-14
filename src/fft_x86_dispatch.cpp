@@ -1,7 +1,6 @@
-#include "x86_features.h"
 #include <cassert>
 #include <genFFT/FFTLevel.h>
-
+#include <genFFT/x86/x86_features.h>
 
 namespace genfft {
 namespace impl_generic {

@@ -321,6 +321,22 @@ struct FFTVertFloat
     template <bool inv>
     void transform_impl(float *data, int stride, int cols)
     {
+        const int half = N/2*stride;
+        int next_col = cols;
+        // Process the input in vertical spans, 32 complex numbers wide.
+        // The last span may be wider, up to 48.
+        for (int col=0; col<cols; col=next_col)
+        {
+            next_col = cols - col >= 48 ? col + 32 : cols;
+            int span_width = next_col - col;
+            float *span_data = data + 2*col;
+            transform_span<inv>(span_data, stride, span_width);
+        }
+    }
+
+    template <bool inv>
+    void transform_span(float *data, int stride, int cols)
+    {
         int half = N/2 * stride;
         next.template transform_impl<inv>(data,      stride, cols);
         next.template transform_impl<inv>(data+half, stride, cols);

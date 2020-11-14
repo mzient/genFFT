@@ -24,7 +24,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED  THE uint32_t CH DAMAGE.
 */
 
-#include "x86_features.h"
+#include <genFFT/x86/x86_features.h>
 #include <cpuid.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -46,7 +46,7 @@ __get_cpuid_count (uint32_t leaf, uint32_t subleaf,
   return 1;
 }
 
-static cpu_features InitCPUFeatures()
+inline cpu_features InitCPUFeatures()
 {
     cpu_features ret = {};
     uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
@@ -70,10 +70,11 @@ static cpu_features InitCPUFeatures()
     return ret;
 }
 
+cpu_features x86_cpu_features = InitCPUFeatures();
+
 cpu_features GetCPUFeatures()
 {
-    static cpu_features features = InitCPUFeatures();
-    return features;
+    return x86_cpu_features;
 }
 
 } // genfft

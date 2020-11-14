@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <complex>
 #include <random>
 #include "test_util.h"
+#include "fft_test_impl.h"
 
 namespace {
 
@@ -40,34 +41,6 @@ class FFT_test_pow2 : public testing::TestWithParam<int>
 {
 };
 
-
-template <typename T>
-void TestFFT_Pow2(int n)
-{
-    genfft::FFT<T> fft(n);
-    std::vector<std::complex<T>> in(n), out(n), invout(n);
-    std::vector<std::complex<T>> ref_out(n), ref_inv(n);
-    DummyData(in, false);
-    fft.template transform<false>(out.data(), in.data());
-    fft.template transform<true>(invout.data(), out.data());
-    reference_impl::FFT_pow2(ref_out.data(), in.data(), n, false);
-    reference_impl::FFT_pow2(ref_inv.data(), ref_out.data(), n, true);
-    const T eps = FFT_Eps<T>(n);
-    const double norm = 1.0/n;
-    for (int i = 0; i < n; i++)
-        std::cout << i << "\t" << in[i] << "\n";
-    for (int i = 0; i < n; i++)
-    {
-        std::cout << i << "\t" << out[i] << "\t" << ref_out[i] << "\n";
-        std::complex<T> inv_x(std::complex<double>(invout[i]) * norm);
-        std::complex<T> ref_inv_x(std::complex<double>(ref_inv[i]) * norm);
-        ASSERT_NEAR(out[i].real(), ref_out[i].real(), eps) << " i = " << i;
-        ASSERT_NEAR(out[i].imag(), ref_out[i].imag(), eps) << " i = " << i;
-        ASSERT_NEAR(inv_x.real(), ref_inv_x.real(), eps) << " i = " << i;
-        ASSERT_NEAR(inv_x.imag(), ref_inv_x.imag(), eps) << " i = " << i;
-        ASSERT_NEAR(inv_x.real(), in[i].real(), eps) << " i = " << i;
-    }
-}
 
 TEST_P(FFT_test_pow2, Pow2_float)
 {
@@ -107,32 +80,6 @@ inline void PrintTo(const VertFFTParam &param, std::ostream *os)
 class FFT_vert_test_pow2 : public testing::TestWithParam<VertFFTParam>
 {
 };
-
-
-template <typename T>
-void TestFFTVert_Pow2(int n, int cols)
-{
-    genfft::FFTVert<T> fft(n);
-    std::vector<std::complex<T>> in(n*cols), out(n*cols), invout(n*cols);
-    std::vector<std::complex<T>> ref_out(n*cols), ref_inv(n*cols);
-    DummyData(in, false);
-    fft.template transform<false>(out.data(), cols, in.data(), cols, cols);
-    fft.template transform<true>(invout.data(), cols, out.data(), cols, cols);
-    reference_impl::FFT_pow2_vert(ref_out.data(), in.data(), n, cols, false);
-    reference_impl::FFT_pow2_vert(ref_inv.data(), ref_out.data(), n, cols, true);
-    const T eps = FFT_Eps<T>(n);
-    const double norm = 1.0/n;
-    for (int i = 0; i < n; i++)
-    {
-        std::complex<T> inv_x(std::complex<double>(invout[i]) * norm);
-        std::complex<T> ref_inv_x(std::complex<double>(ref_inv[i]) * norm);
-        ASSERT_NEAR(out[i].real(), ref_out[i].real(), eps) << " i = " << i;
-        ASSERT_NEAR(out[i].imag(), ref_out[i].imag(), eps) << " i = " << i;
-        ASSERT_NEAR(inv_x.real(), ref_inv_x.real(), eps) << " i = " << i;
-        ASSERT_NEAR(inv_x.imag(), ref_inv_x.imag(), eps) << " i = " << i;
-        ASSERT_NEAR(inv_x.real(), in[i].real(), eps) << " i = " << i;
-    }
-}
 
 TEST_P(FFT_vert_test_pow2, Pow2_float)
 {

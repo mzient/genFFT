@@ -24,6 +24,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef _GENFFT_X86_FEATURES_H
+#define _GENFFT_X86_FEATURES_H
+
 namespace genfft {
 
 struct cpu_features
@@ -43,3 +46,4 @@ cpu_features GetCPUFeatures();
 
 }  // genfft
 
+#endif  // _GENFFT_X86_FEATURES_H

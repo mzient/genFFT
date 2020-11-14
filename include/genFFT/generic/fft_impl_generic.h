@@ -127,15 +127,17 @@ struct FFTVertGeneric
     FFTVertGeneric<N/2, T> next;
 
     template <bool inv>
-    void transform_impl(T *data, int stride, int columns)
+    void transform_impl(T *data, int stride, int cols)
     {
         const int half = N/2*stride;
-        int next_col = columns;
-        for (int col=0; col<columns; col=next_col)
+        int next_col = cols;
+        // Process the input in vertical spans, 32 complex numbers wide.
+        // The last span may be wider, up to 48.
+        for (int col=0; col<cols; col=next_col)
         {
-            next_col = columns - col < 48 ? col + 32 : columns;
+            next_col = cols - col >= 48 ? col + 32 : cols;
             int span_width = next_col - col;
-            T *span_data = data + col;
+            T *span_data = data + 2*col;
             next.template transform_impl<inv>(span_data,      stride, span_width);
             next.template transform_impl<inv>(span_data+half, stride, span_width);
 

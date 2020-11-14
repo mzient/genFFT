@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iomanip>
 
 #if defined(__x86_64__) || defined(__i386__)
-#include "../src/x86_features.h"
+#include <genFFT/x86/x86_features.h>
 
 void PrintCPUFeatures()
 {
