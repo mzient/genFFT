@@ -69,11 +69,11 @@ void separate_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const st
 ///@brief 2D FFT
 ///@tparam T scalar type
 template <class T>
-class FFT2D_real
+class RealFFT2D
 {
 public:
-    FFT2D_real() = default;
-    FFT2D_real(int width, int height) : horz(width), vert(height) {}
+    RealFFT2D() = default;
+    RealFFT2D(int width, int height) : horz(width), vert(height) {}
 
     ///@brief Computes forward transform
     ///@param out output array, must not be equal to in
@@ -183,38 +183,39 @@ private:
     FFTVert<T>      vert;
 };
 
-template <class T>
-struct FFTDITBase
-{
-    virtual ~FFTDITBase()=default;
-    /**
-     * @brief Applies decimation in time adjustment to the transformed values Z
-     */
-    virtual void apply_DIT(std::complex<T> *F, const std::complex<T> *Z, bool half);
-};
-
 ///@brief A 1D FFT for densely packed data
 ///@tparam T scalar type
-template <class T, FFTImplFactory<T> *factory = backend::GetImpl>
-struct FFT_real
+template <class T, FFTImplFactory<T> *factory = backend::GetImpl, FFTDITImplFactory<T> *dit_factory = backend::GetDITImpl>
+struct RealFFT
 {
-    FFT_real()=default;
-    FFT_real(int n)
+    RealFFT()=default;
+    RealFFT(int n)
     {
-        if (n > 1)
+        if (n > 1) {
             impl = factory(n / 2, T());
+            dit = dit_factory(n, T());
+        }
         this->n = n;
     }
 
-    void forward(std::complex<T> *out, const T *in)
+    /// @brief Computes forward transform of real-valued signal
+    /// @param half if true, only N/2+1 values are stored
+    ///             if false, the upper half of the spectrum is reconstituted
+    void forward(std::complex<T> *out, const T *in, bool half)
     {
-
+        if (n == 1) {
+            out[0] = in[0];
+        } else {
+            impl->template transform<false>((T*)out, in);
+            dit->apply((T*)out, (T*)out, half);
+        }
     }
 
     int size() const noexcept { return n; }
 
 private:
     FFTImplPtr<T> impl;
+    FFTDITImplPtr<T> dit;
     int n = 0;
 };
 

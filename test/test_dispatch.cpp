@@ -1,5 +1,5 @@
 /*
-Copyright 2019-2020 Michal Zientkiewicz
+Copyright 2019-2021 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -124,38 +124,5 @@ INSTANTIATE_TEST_CASE_P(
     FFT_vert_test_pow2,
     ::testing::ValuesIn(FFT_Vert_Pow2_Sizes)
 );
-
-///////////////////////////////////////////////////////////////
-// DIT test
-
-class FFT_DIT_test_pow2 : public testing::TestWithParam<std::tuple<int, bool>>
-{
-};
-
-
-TEST_P(FFT_DIT_test_pow2, float)
-{
-    std::tuple<int, bool> param = GetParam();
-    TestDIT_Pow2<float>(std::get<0>(param), std::get<1>(param));
-}
-
-TEST_P(FFT_DIT_test_pow2, double)
-{
-    std::tuple<int, bool> param = GetParam();
-    TestDIT_Pow2<double>(std::get<0>(param), std::get<1>(param));
-}
-
-auto DIT_Sizes_InPlace = testing::Combine(
-        ::testing::Values(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
-                          1<<14, 1<<15, 1<<16, 1<<17, 1<<18, 1<<19, 1<<20),
-        ::testing::Values(false, true)
-    );
-
-INSTANTIATE_TEST_CASE_P(
-    FFT_DIT_pow2,
-    FFT_DIT_test_pow2,
-    DIT_Sizes_InPlace
-);
-
 
 } // namespace
