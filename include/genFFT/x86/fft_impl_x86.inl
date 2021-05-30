@@ -1,5 +1,5 @@
 /*
-Copyright 2017-2019 Michal Zientkiewicz
+Copyright 2021 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -24,9 +24,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifdef GENFFT_USE_SSE
+// All implementations are aggregated here.
+
 #include "fft_float_impl_x86.inl"
-#endif
-#ifdef GENFFT_USE_SSE2
 #include "fft_double_impl_x86.inl"
-#endif
+#include "fft_dit_impl_x86.inl"

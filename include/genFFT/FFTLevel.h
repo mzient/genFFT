@@ -43,7 +43,7 @@ namespace impl {
 template <class T>
 struct FFTBase
 {
-    virtual ~FFTBase() {}
+    virtual ~FFTBase()=default;
 
     template <bool inv>
     inline void transform(T *data)
@@ -102,7 +102,7 @@ inline int convenient_col_num(int cols)
 template <class T>
 struct FFTVertBase
 {
-    virtual ~FFTVertBase() {}
+    virtual ~FFTVertBase()=default;
 
     template <bool inv>
     inline void transform(T *data, int stride, int columns)

@@ -127,16 +127,16 @@ struct FFTVertGeneric
     FFTVertGeneric<N/2, T> next;
 
     template <bool inv>
-    void transform_impl(T *data, int stride, int cols)
+    void transform_impl(T *data, stride_t stride, index_t cols)
     {
-        const int half = N/2*stride;
-        int next_col = cols;
+        const stride_t half = (N/2) * stride;
+        index_t next_col = cols;
         // Process the input in vertical spans, 32 complex numbers wide.
         // The last span may be wider, up to 48.
-        for (int col=0; col<cols; col=next_col)
+        for (index_t col=0; col<cols; col=next_col)
         {
             next_col = cols - col >= 48 ? col + 32 : cols;
-            int span_width = next_col - col;
+            index_t span_width = next_col - col;
             T *span_data = data + 2*col;
             next.template transform_impl<inv>(span_data,      stride, span_width);
             next.template transform_impl<inv>(span_data+half, stride, span_width);
@@ -150,7 +150,7 @@ struct FFTVertGeneric
 #ifdef FFT_OPENMP_SIMD
                 #pragma omp simd
 #endif
-                for (int j=0; j<2*span_width; j+=2)
+                for (index_t j=0; j<2*span_width; j+=2)
                 {
                     T tempr, tempi;
                     tempr = inv ? odd[j]*wr + odd[j+1]*wi : odd[j]*wr - odd[j+1]*wi;
@@ -172,7 +172,7 @@ template <class T>
 struct FFTVertGeneric<4, T>
 {
     template <bool inv>
-    void transform_impl(T *data, int stride, int cols)
+    void transform_impl(T *data, stride_t stride, index_t cols)
     {
         T *row0 = data;
         T *row1 = row0+stride;
@@ -182,7 +182,7 @@ struct FFTVertGeneric<4, T>
 #ifdef FFT_OPENMP_SIMD
         #pragma omp simd
 #endif
-        for (int j=0; j<cols*2; j+=2)
+        for (index_t j=0; j<cols*2; j+=2)
         {
             T tr = row1[j];
             T ti = row1[j+1];
@@ -217,12 +217,12 @@ template <class T>
 struct FFTVertGeneric<2, T>
 {
     template <bool inv_unused>
-    void transform_impl(T* data, int stride, int cols)
+    void transform_impl(T* data, stride_t stride, index_t cols)
     {
         T* row0 = data;
         T* row1 = data+stride;
 
-        for (int i=0; i<2*cols; i+=2)
+        for (index_t i=0; i<2*cols; i+=2)
         {
             T tr = row1[i];
             T ti = row1[i+1];
@@ -316,5 +316,7 @@ inline std::shared_ptr<impl::FFTVertBase<T>> GetVertImpl(int n, T)
 
 }  // impl_generic
 }  // genfft
+
+#include "fft_dit_generic.h"
 
 #endif /* GENFFT_IMPL_GENERIC_H */

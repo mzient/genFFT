@@ -6,8 +6,7 @@
 
 namespace genfft {
 namespace impl_SSE3 {
-    #include <genFFT/x86/fft_float_impl_x86.inl>
-    #include <genFFT/x86/fft_double_impl_x86.inl>
+    #include <genFFT/x86/fft_impl_x86.inl>
 
     DISPATCH_ALL()
 }

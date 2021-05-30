@@ -1,5 +1,6 @@
 #include <cassert>
 #include <genFFT/FFTLevel.h>
+#include <genFFT/FFTDIT.h>
 #include <genFFT/x86/x86_features.h>
 
 namespace genfft {
@@ -101,6 +102,40 @@ std::shared_ptr<impl::FFTVertBase<float>> GetVertImpl(int n, float)
 std::shared_ptr<impl::FFTVertBase<double>> GetVertImpl(int n, double)
 {
     return GetVertImpl<double>(n, GetCPUFeatures());
+}
+
+
+template <typename T>
+std::shared_ptr<impl::FFTDITBase<T>> GetDITImpl(int n, cpu_features cpu)
+{
+    if (cpu.AVX2) {
+        return impl_AVX2::GetDITDispatchImpl(n, T());
+    } else if (cpu.AVX) {
+        if (cpu.FMA)
+            return impl_AVX_FMA::GetDITDispatchImpl(n, T());
+        else
+            return impl_AVX::GetDITDispatchImpl(n, T());
+    } else if (cpu.SSE41) {
+        return impl_SSE41::GetDITDispatchImpl(n, T());
+    } else if (cpu.SSE3) {
+        return impl_SSE3::GetDITDispatchImpl(n, T());
+    } else if (cpu.SSE2) {
+        return impl_SSE3::GetDITDispatchImpl(n, T());
+    } else if (cpu.SSE) {
+        return impl_SSE::GetDITDispatchImpl(n, T());
+    } else {
+        return impl_generic::GetDITDispatchImpl(n, T());
+    }
+}
+
+std::shared_ptr<impl::FFTDITBase<float>> GetDITImpl(int n, float)
+{
+    return GetDITImpl<float>(n, GetCPUFeatures());
+}
+
+std::shared_ptr<impl::FFTDITBase<double>> GetDITImpl(int n, double)
+{
+    return GetDITImpl<double>(n, GetCPUFeatures());
 }
 
 }  // impl_x86_dispatch

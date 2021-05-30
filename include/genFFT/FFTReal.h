@@ -31,29 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace genfft {
 
-/*///@brief Recovers two transforms of real data from one interleaved transform.
-template <class T>
-void separate_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const std::complex<T> *in, int N)
-{
-    const T *Fz = (const T*)in;
-    T *Fx = (T *)out1;
-    T *Fy = (T *)out2;
-
-    Fx[0] = Fz[0];
-    Fx[1] = 0;
-    Fy[0] = Fz[1];
-    Fy[1] = 0;
-
-    for (int i=1; i<N; i++)
-    {
-        int k = N-i;
-        Fx[2*i+0] = (Fz[2*i]   + Fz[2*k])   * 0.5f;
-        Fx[2*i+1] = (Fz[2*i+1] - Fz[2*k+1]) * 0.5f;
-        Fy[2*i+0] = (Fz[2*k+1] + Fz[2*i+1]) * 0.5f;
-        Fy[2*i+1] = (Fz[2*k]   - Fz[2*i])   * 0.5f;
-    }
-}*/
-
 ///@brief Recovers two transforms of real data from one interleaved transform. The input and output arrays may alias.
 template <class T>
 void separate_2x_real_FFT(std::complex<T> *out1, std::complex<T> *out2, const std::complex<T> *in, int N)
@@ -207,10 +184,13 @@ private:
 };
 
 template <class T>
-struct FFT_DIT_base
+struct FFTDITBase
 {
-
-    virtual ~FFT_DIT_base();
+    virtual ~FFTDITBase()=default;
+    /**
+     * @brief Applies decimation in time adjustment to the transformed values Z
+     */
+    virtual void apply_DIT(std::complex<T> *F, const std::complex<T> *Z, bool half);
 };
 
 ///@brief A 1D FFT for densely packed data
@@ -231,7 +211,7 @@ struct FFT_real
 
     }
 
-    int size() const { return n; }
+    int size() const noexcept { return n; }
 
 private:
     FFTImplPtr<T> impl;

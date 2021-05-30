@@ -1,5 +1,5 @@
 /*
-Copyright 2017-2020 Michal Zientkiewicz
+Copyright 2017-2021 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -24,88 +24,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-///@brief Implementation details
-
-#ifdef GENFFT_USE_AVX
-typedef __m256 float8;
-inline float8 load(const float *addr)
-{
-    return _mm256_loadu_ps(addr);
-}
-inline void store(float *addr, float8 v)
-{
-    _mm256_storeu_ps(addr, v);
-}
-inline __m256 flip_even(__m256 a)
-{
-    const __m256 signmask = _mm256_castsi256_ps(_mm256_set_epi32(0, 0x80000000, 0, 0x80000000, 0, 0x80000000, 0, 0x80000000));
-    return _mm256_xor_ps(a, signmask);
-}
-inline __m256 flip_odd(__m256 a)
-{
-    const __m256 signmask = _mm256_castsi256_ps(_mm256_set_epi32(0x80000000, 0, 0x80000000, 0, 0x80000000, 0, 0x80000000, 0));
-    return _mm256_xor_ps(a, signmask);
-}
-#else
-struct alignas(__m128) float8 { __m128 lo, hi; };
-inline float8 load(const float *addr)
-{
-    return { _mm_loadu_ps(addr), _mm_loadu_ps(addr+4) };
-}
-inline void store(float *addr, float8 v)
-{
-    _mm_storeu_ps(addr,     v.lo);
-    _mm_storeu_ps(addr + 4, v.hi);
-}
-
-#endif
-
-inline __m128 flip_even(__m128 a)
-{
-    const __m128 signmask = _mm_castsi128_ps(_mm_set_epi32(0, 0x80000000, 0, 0x80000000));
-    return _mm_xor_ps(a, signmask);
-}
-
-inline __m128 flip_odd(__m128 x)
-{
-    const __m128 signmask = _mm_castsi128_ps(_mm_set_epi32(0x80000000, 0, 0x80000000, 0));
-    return _mm_xor_ps(x, signmask);
-}
-
-
-#ifdef GENFFT_USE_SSE3
-inline __m128 addsub(__m128 a, __m128 b)
-{
-    return _mm_addsub_ps(a, b);
-}
-inline __m128 subadd(__m128 a, __m128 b)
-{
-    return _mm_addsub_ps(a, -b);
-}
-#else
-inline __m128 addsub(__m128 a, __m128 b)
-{
-    return _mm_add_ps(a, flip_even(b));
-}
-inline __m128 subadd(__m128 a, __m128 b)
-{
-    return _mm_sub_ps(a, flip_even(b));
-}
-#endif
-
-#ifdef GENFFT_USE_AVX
-template <uint8_t mask>
-inline __m128 permute(__m128 x)
-{
-    return _mm_permute_ps(x, mask);
-}
-#else
-template <uint8_t mask>
-inline __m128 permute(__m128 x)
-{
-    return _mm_shuffle_ps(x, x, mask);
-}
-#endif
+#include "fft_x86_utils.h"
 
 // Single row FFT for single precision floating point numbers
 
@@ -301,12 +220,12 @@ struct FFTFloat<8>
 };
 #endif
 
-// Vertical multi-column FFT for singgle precision floating point values
+// Vertical multi-column FFT for single precision floating point values
 
-inline int convenient_col_num(int cols, float)
+inline index_t convenient_col_num(index_t cols, float)
 {
 #ifdef GENFFT_USE_AVX
-    static const int tab[4] = { 0, 0, 2, 1 };
+    static const index_t tab[4] = { 0, 0, 2, 1 };
     return cols + tab[cols&4];
 #else
     return cols;
@@ -319,25 +238,25 @@ struct FFTVertFloat
     FFTVertFloat<N/2> next;
 
     template <bool inv>
-    void transform_impl(float *data, int stride, int cols)
+    void transform_impl(float *data, stride_t stride, index_t cols)
     {
-        const int half = N/2*stride;
-        int next_col = cols;
+        const stride_t half = (N/2) * stride;
+        index_t next_col = cols;
         // Process the input in vertical spans, 32 complex numbers wide.
         // The last span may be wider, up to 48.
-        for (int col=0; col<cols; col=next_col)
+        for (index_t col=0; col<cols; col=next_col)
         {
             next_col = cols - col >= 48 ? col + 32 : cols;
-            int span_width = next_col - col;
+            index_t span_width = next_col - col;
             float *span_data = data + 2*col;
             transform_span<inv>(span_data, stride, span_width);
         }
     }
 
     template <bool inv>
-    void transform_span(float *data, int stride, int cols)
+    void transform_span(float *data, stride_t stride, index_t cols)
     {
-        int half = N/2 * stride;
+        stride_t half = N/2 * stride;
         next.template transform_impl<inv>(data,      stride, cols);
         next.template transform_impl<inv>(data+half, stride, cols);
 
@@ -346,7 +265,7 @@ struct FFTVertFloat
             float *even = data + i*stride;
             float *odd  = even + half;
 
-            int j=0;
+            index_t j=0;
 #ifdef GENFFT_USE_AVX
             __m256 Wr = _mm256_broadcast_ss(&twiddle.t[2*i]);
             __m256 Wi = _mm256_broadcast_ss(&twiddle.t[2*i+1]);
@@ -422,14 +341,14 @@ template <>
 struct FFTVertFloat<4>
 {
     template <bool inv>
-    void transform_impl(float *data, int stride, int cols)
+    void transform_impl(float *data, stride_t stride, index_t cols)
     {
         float *row0 = data;
         float *row1 = row0+stride;
         float *row2 = row1+stride;
         float *row3 = row2+stride;
 
-        int j = 0;
+        index_t j = 0;
 #ifdef GENFFT_USE_AVX
         for (; j+8<=cols*2; j+=8)
         {
@@ -501,19 +420,19 @@ template <>
 struct FFTVertFloat<1>
 {
     template <bool inv_unused>
-    void transform_impl(float *data, int stride, int cols) {}
+    void transform_impl(float *data, stride_t stride, index_t cols) {}
 };
 
 template <>
 struct FFTVertFloat<2>
 {
     template <bool inv_unused>
-    void transform_impl(float *data, int stride, int cols)
+    void transform_impl(float *data, stride_t stride, index_t cols)
     {
         float *row0 = data;
         float *row1 = row0+stride;
 
-        int j = 0;
+        index_t j = 0;
 #ifdef GENFFT_USE_AVX
         for (; j+8<=cols*2; j+=8)
         {

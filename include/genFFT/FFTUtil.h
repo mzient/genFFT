@@ -29,26 +29,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GEN_FFT_UTIL_H
 
 #include <type_traits>
+#include "FFTTypes.h"
 
 namespace genfft
 {
 
 template <int N, class T, class U>
-inline typename std::enable_if<(N == 1), void>::type static_scramble(T *out, const U *in, int stride = 1)
+inline typename std::enable_if<(N == 1), void>::type static_scramble(T *out, const U *in, stride_t stride = 1)
 {
     (void)stride;
     *out = *in;
 }
 
 template <int N, class T, class U>
-inline typename std::enable_if<(N>1), void>::type static_scramble(T *out, const U *in, int stride = 1)
+inline typename std::enable_if<(N>1), void>::type static_scramble(T *out, const U *in, stride_t stride = 1)
 {
     static_scramble<N/2, T, U>(out, in, 2 * stride);
     static_scramble<N/2, T, U>(out + stride, in + N/2, 2 * stride);
 }
 
 template <class T, class U>
-void scramble(T *out, const U *in, int N, int stride = 1)
+void scramble(T *out, const U *in, int N, stride_t stride = 1)
 {
     switch (N)
     {
@@ -82,11 +83,11 @@ void scramble(T *out, const U *in, int N, int stride = 1)
 }
 
 template <class T, class U>
-void scramble_rows(T *out, int out_stride, const U *in, int in_stride, int rows, int cols)
+void scramble_rows(T *out, stride_t out_stride, const U *in, stride_t in_stride, index_t rows, index_t cols)
 {
     if (rows == 1)
     {
-        for (int i=0; i<cols; i++)
+        for (index_t i=0; i<cols; i++)
             out[i] = in[i];
     }
     else

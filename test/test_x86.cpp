@@ -82,7 +82,8 @@ inline bool FeaturesSupported(cpu_features check, cpu_features present)
 TEST(TestArchs, Pow2_float)
 {
     cpu_features old_features = genfft::x86_cpu_features;
-    for (cpu_features f : feature_params) {
+    for (cpu_features f : feature_params)
+    {
         if (!FeaturesSupported(f, old_features))
             continue;
         genfft::x86_cpu_features = f;
@@ -99,7 +100,8 @@ TEST(TestArchs, Pow2_float)
 TEST(TestArchs, Pow2_double)
 {
     cpu_features old_features = genfft::x86_cpu_features;
-    for (cpu_features f : feature_params) {
+    for (cpu_features f : feature_params)
+    {
         if (!FeaturesSupported(f, old_features))
             continue;
         genfft::x86_cpu_features = f;
@@ -116,7 +118,8 @@ TEST(TestArchs, Pow2_double)
 TEST(TestArchs, VertPow2_float)
 {
     cpu_features old_features = genfft::x86_cpu_features;
-    for (cpu_features f : feature_params) {
+    for (cpu_features f : feature_params)
+    {
         if (!FeaturesSupported(f, old_features))
             continue;
         genfft::x86_cpu_features = f;
@@ -133,7 +136,8 @@ TEST(TestArchs, VertPow2_float)
 TEST(TestArchs, VertPow2_double)
 {
     cpu_features old_features = genfft::x86_cpu_features;
-    for (cpu_features f : feature_params) {
+    for (cpu_features f : feature_params)
+    {
         if (!FeaturesSupported(f, old_features))
             continue;
         genfft::x86_cpu_features = f;
@@ -142,6 +146,46 @@ TEST(TestArchs, VertPow2_double)
         {
             std::cout << "Testing FFT size: " << n << "\n";
             TestFFTVert_Pow2<double>(n, 63);
+        }
+    }
+    genfft::x86_cpu_features = old_features;
+}
+
+TEST(TestArchs, DIT_float)
+{
+    cpu_features old_features = genfft::x86_cpu_features;
+    for (cpu_features f : feature_params)
+    {
+        if (!FeaturesSupported(f, old_features))
+            continue;
+        genfft::x86_cpu_features = f;
+        std::cout << "Testing CPU features:\n" << f;
+        for (int n = 1; n <= 64; n *= 2)
+        {
+            std::cout << "Testing DIT size: " << n << "\n";
+            TestDIT_Pow2<float>(n, false);
+            std::cout << "Testing DIT (in-place): " << n << "\n";
+            TestDIT_Pow2<float>(n, true);
+        }
+    }
+    genfft::x86_cpu_features = old_features;
+}
+
+TEST(TestArchs, DIT_double)
+{
+    cpu_features old_features = genfft::x86_cpu_features;
+    for (cpu_features f : feature_params)
+    {
+        if (!FeaturesSupported(f, old_features))
+            continue;
+        genfft::x86_cpu_features = f;
+        std::cout << "Testing CPU features:\n" << f;
+        for (int n = 1; n <= 64; n *= 2)
+        {
+            std::cout << "Testing DIT size: " << n << "\n";
+            TestDIT_Pow2<double>(n, false);
+            std::cout << "Testing DIT (in-place): " << n << "\n";
+            TestDIT_Pow2<double>(n, true);
         }
     }
     genfft::x86_cpu_features = old_features;

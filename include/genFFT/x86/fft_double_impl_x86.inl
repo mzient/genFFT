@@ -1,5 +1,5 @@
 /*
-Copyright 2017-2020 Michal Zientkiewicz
+Copyright 2017-2021 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -24,88 +24,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifdef GENFFT_USE_AVX
-typedef __m256d double4;
-inline double4 load(const double *addr)
-{
-    return _mm256_loadu_pd(addr);
-}
-inline void store(double *addr, double4 v)
-{
-    _mm256_storeu_pd(addr, v);
-}
-inline __m256d flip_even(__m256d a)
-{
-    const __m256d signmask = _mm256_castsi256_pd(_mm256_set_epi32(0, 0, 0x80000000, 0, 0, 0, 0x80000000, 0));
-    return _mm256_xor_pd(a, signmask);
-}
-inline __m256d flip_odd(__m256d a)
-{
-    const __m256d signmask = _mm256_castsi256_pd(_mm256_set_epi32(0x80000000, 0, 0, 0, 0x80000000, 0, 0, 0));
-    return _mm256_xor_pd(a, signmask);
-}
-
-#define _MM_SHUFFLE4x2(d, c, b, a) ((d<<3)|(c<<2)|(b<<1)|a)
-
-#else
-struct alignas(__m128d) double4 { __m128d lo, hi; };
-inline double4 load(const double *addr)
-{
-    return { _mm_loadu_pd(addr), _mm_loadu_pd(addr+4) };
-}
-inline void store(double *addr, double4 v)
-{
-    _mm_storeu_pd(addr,     v.lo);
-    _mm_storeu_pd(addr + 4, v.hi);
-}
-
-#endif
-
-inline __m128d flip_even(__m128d a)
-{
-    const __m128d signmask = _mm_castsi128_pd(_mm_set_epi64x(0, 1ull<<63));
-    return _mm_xor_pd(a, signmask);
-}
-
-inline __m128d flip_odd(__m128d x)
-{
-    const __m128d signmask = _mm_castsi128_pd(_mm_set_epi64x(1ull<<63, 0));
-    return _mm_xor_pd(x, signmask);
-}
-
-#ifdef GENFFT_USE_SSE3
-inline __m128d addsub(__m128d a, __m128d b)
-{
-    return _mm_addsub_pd(a, b);
-}
-inline __m128d subadd(__m128d a, __m128d b)
-{
-    return _mm_addsub_pd(a, -b);
-}
-#else
-inline __m128d addsub(__m128d a, __m128d b)
-{
-    return _mm_add_pd(a, flip_even(b));
-}
-inline __m128d subadd(__m128d a, __m128d b)
-{
-    return _mm_sub_pd(a, flip_even(b));
-}
-#endif
-
-#ifdef GENFFT_USE_AVX
-template <uint8_t mask>
-inline __m128d permute(__m128d x)
-{
-    return _mm_permute_pd(x, mask);
-}
-#else
-template <uint8_t mask>
-inline __m128d permute(__m128d x)
-{
-    return _mm_shuffle_pd(x, x, mask);
-}
-#endif
+#include "fft_x86_utils.h"
 
 // Single row FFT for single precision doubleing point numbers
 
@@ -225,25 +144,25 @@ struct FFTVertDouble
     FFTVertDouble<N/2> next;
 
     template <bool inv>
-    void transform_impl(double *data, int stride, int cols)
+    void transform_impl(double *data, stride_t stride, index_t cols)
     {
-        const int half = N/2*stride;
-        int next_col = cols;
+        const stride_t half = (N/2) * stride;
+        index_t next_col = cols;
         // Process the input in vertical spans, 32 complex numbers wide.
         // The last span may be wider, up to 48.
-        for (int col=0; col<cols; col=next_col)
+        for (index_t col=0; col<cols; col=next_col)
         {
             next_col = cols - col >= 48 ? col + 32 : cols;
-            int span_width = next_col - col;
+            index_t span_width = next_col - col;
             double *span_data = data + 2*col;
             transform_span<inv>(span_data, stride, span_width);
         }
     }
 
     template <bool inv>
-    void transform_span(double *data, int stride, int cols)
+    void transform_span(double *data, stride_t stride, index_t cols)
     {
-        int half = N/2 * stride;
+        stride_t half = (N/2) * stride;
         next.template transform_impl<inv>(data,      stride, cols);
         next.template transform_impl<inv>(data+half, stride, cols);
 
@@ -252,7 +171,7 @@ struct FFTVertDouble
             double *even = data + i*stride;
             double *odd  = even + half;
 
-            int j=0;
+            index_t j=0;
 #ifdef GENFFT_USE_AVX
             __m256d Wr = _mm256_broadcast_sd(&twiddle.t[2*i]);
             __m256d Wi = _mm256_broadcast_sd(&twiddle.t[2*i+1]);
@@ -317,14 +236,14 @@ template <>
 struct FFTVertDouble<4>
 {
     template <bool inv>
-    void transform_impl(double *data, int stride, int cols)
+    void transform_impl(double *data, stride_t stride, index_t cols)
     {
         double *row0 = data;
         double *row1 = row0+stride;
         double *row2 = row1+stride;
         double *row3 = row2+stride;
 
-        int j = 0;
+        index_t j = 0;
 #ifdef GENFFT_USE_AVX
         for (; j+4<=cols*2; j+=4)
         {
@@ -392,12 +311,12 @@ template <>
 struct FFTVertDouble<2>
 {
     template <bool inv_unused>
-    void transform_impl(double *data, int stride, int cols)
+    void transform_impl(double *data, stride_t stride, index_t cols)
     {
         double *row0 = data;
         double *row1 = row0+stride;
 
-        int j = 0;
+        index_t j = 0;
 #ifdef GENFFT_USE_AVX
         for (; j+4<=cols*2; j+=4)
         {
@@ -431,7 +350,7 @@ template <>
 struct FFTVertDouble<1>
 {
     template <bool inv_unused>
-    void transform_impl(double *data, int stride, int cols) {}
+    void transform_impl(double *data, stride_t stride, index_t cols) {}
 };
 
 inline std::shared_ptr<impl::FFTBase<double>> GetImpl(int n, double)

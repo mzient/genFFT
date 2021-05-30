@@ -8,6 +8,7 @@ namespace genfft {
 IMPORT_NAMESPACE(impl_SSE)
 namespace impl_SSE2 {
     #include <genFFT/x86/fft_double_impl_x86.inl>
+    #include <genFFT/x86/fft_dit_impl_x86.inl>
 
     DISPATCH(double)
     FORWARD(float, impl_SSE)

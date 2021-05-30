@@ -7,8 +7,7 @@
 namespace genfft {
 IMPORT_NAMESPACE(impl_AVX_FMA)
 namespace impl_AVX2 {
-    #include <genFFT/x86/fft_float_impl_x86.inl>
-    #include <genFFT/x86/fft_double_impl_x86.inl>
+    #include <genFFT/x86/fft_impl_x86.inl>
 
     FORWARD(float,  impl_AVX_FMA)
     FORWARD(double, impl_AVX_FMA)

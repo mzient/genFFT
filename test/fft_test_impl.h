@@ -79,4 +79,29 @@ void TestFFTVert_Pow2(int n, int cols)
     }
 }
 
+template <typename T>
+void TestDIT_Pow2(int n, bool in_place)
+{
+    int N = 1024;
+    std::vector<T> real_input(N);
+    std::vector<std::complex<T>> complex_input(N), out_half(N), out1(N), out2(N), out3(N);
+    DummyData(real_input);
+    for (int i = 0; i < N; i++)
+        complex_input[i] = real_input[i];
+
+    genfft::FFT<T> half_fft(N == 1 ? 1 : N/2);
+    genfft::FFT<T> full_fft(N);
+    half_fft.template transform<false>(out1.data(), (std::complex<T>*)real_input.data());
+    full_fft.template transform<false>(out2.data(), complex_input.data());
+    genfft::DIT<T> dit(N);
+    std::complex<T> *out_ptr = in_place ? out1.data() : out3.data();
+    dit.apply(out_ptr, out1.data(), false);
+    const T eps = FFT_Eps<T>(n);
+    for (int i = 0; i < N; i++)
+    {
+        EXPECT_NEAR(out_ptr[i].real(), out2[i].real(), eps) << " @ " << i;
+        EXPECT_NEAR(out_ptr[i].imag(), out2[i].imag(), eps) << " @ " << i;
+    }
+}
+
 #endif // FFT_TEST_IMPL_H

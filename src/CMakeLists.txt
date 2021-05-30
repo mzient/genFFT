@@ -20,7 +20,7 @@ set_source_files_properties(fft_x86_sse3 PROPERTIES COMPILE_FLAGS "-msse3")
 set_source_files_properties(fft_x86_sse41 PROPERTIES COMPILE_FLAGS "-msse4")
 set_source_files_properties(fft_x86_avx PROPERTIES COMPILE_FLAGS "-msse3 -mavx")
 set_source_files_properties(fft_x86_avx_fma PROPERTIES COMPILE_FLAGS "-msse3 -mavx -mfma")
-set_source_files_properties(fft_x86_avx2 PROPERTIES COMPILE_FLAGS "-mavx2")
+set_source_files_properties(fft_x86_avx2 PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
 
 add_library(genFFT_rt STATIC ${SOURCES})
 target_link_libraries(genFFT_rt genFFT)

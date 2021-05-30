@@ -58,28 +58,20 @@ static void FFT_1D(benchmark::State &state)
     fft.transform<false>(out.data(), in.data());
     fft.transform<true>(iout.data(), out.data());
 
-    int64_t total = 0;
-    int nn = std::max(4, 1024 / n);
-
     for (auto _ : state)
     {
         for (auto &c : in)
             c = { dist(rng), dist(rng) };
         auto start = perf_timer::now();
-        for (int k = 0; k < nn; k++)
-        {
-            fft.transform<false>(out.data(), in.data());
-            fft.transform<true>(iout.data(), out.data());
-        }
+        fft.transform<false>(out.data(), in.data());
+        fft.transform<true>(iout.data(), out.data());
         auto end = perf_timer::now();
         double t = seconds(start, end);
-        total += nn * n;
         state.SetIterationTime(t);
         niter++;
         for (int i = 0; i < n; i++)
             err += std::abs(iout[i]*den - in[i]);
     }
-    state.SetItemsProcessed(total);
     std::cerr << "Average error: " << err / niter << "\n";
 }
 
@@ -130,12 +122,15 @@ static void FFT_Vert(benchmark::State &state)
 BENCHMARK(FFT_1D)
     ->UseManualTime()->RangeMultiplier(2)->Range(2, 2<<20);
 
-static void FFTVertArgs(benchmark::internal::Benchmark* b) {
-  for (int nfft = 1; nfft <= (1<<20); nfft += nfft) {
-      for (int ncols = 1; ncols * nfft < (1<<22); ncols += (ncols <= 16 ? 1 : ncols + 3)) {
-          b->Args({ nfft, ncols });
-      }
-  }
+static void FFTVertArgs(benchmark::internal::Benchmark* b)
+{
+    for (int nfft = 1; nfft <= (1<<20); nfft += nfft)
+    {
+        for (int ncols = 1; ncols * nfft < (1<<22); ncols += (ncols <= 16 ? 1 : ncols + 3))
+        {
+            b->Args({ nfft, ncols });
+        }
+    }
 }
 
 BENCHMARK(FFT_Vert)

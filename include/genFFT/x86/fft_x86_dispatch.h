@@ -36,6 +36,9 @@ std::shared_ptr<impl::FFTBase<double>> GetImpl(int n, double);
 std::shared_ptr<impl::FFTVertBase<float>> GetVertImpl(int n, float);
 std::shared_ptr<impl::FFTVertBase<double>> GetVertImpl(int n, double);
 
+std::shared_ptr<impl::FFTDITBase<float>> GetDITImpl(int n, float);
+std::shared_ptr<impl::FFTDITBase<double>> GetDITImpl(int n, double);
+
 } // impl_x86_dispatch
 } // genfft
 

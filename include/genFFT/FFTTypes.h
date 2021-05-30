@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Michal Zientkiewicz
+Copyright 2021 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -24,18 +24,18 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _GENFFT_X86_H
-#define _GENFFT_X86_H
+#ifndef GENFFT_FFT_TYPES_H
+#define GENFFT_FFT_TYPES_H
 
-#include "fft_x86_preproc.h"
-#include "../FFTTwiddle.h"
+#include "FFTComplex.h"
+#include <cstddef>
 
 namespace genfft {
-namespace impl_native {
 
-#include "fft_impl_x86.inl"
+using stride_t = ptrdiff_t;
+using index_t = int;
 
-} // impl_native
 } // genfft
 
-#endif
+#endif // GENFFT_FFT_TYPES_H
+

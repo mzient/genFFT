@@ -39,7 +39,7 @@ template <int _N, class T>
 struct Twiddle
 {
     static constexpr int N = _N;
-    constexpr inline T operator[](int i) const { return t[i]; }
+    constexpr inline T operator[](int i) const noexcept { return t[i]; }
     alignas(32) T t[N];
     Twiddle()
     {
@@ -55,7 +55,7 @@ struct Twiddle
 template <class T>
 struct Twiddle<-1, T>
 {
-    constexpr inline T operator[](int i) const { return t[i]; }
+    constexpr inline T operator[](int i) const noexcept { return t[i]; }
     T *t = nullptr;
     int N = 0;
 
@@ -98,7 +98,7 @@ template <int _N, typename T>
 struct DITTwiddle
 {
     static constexpr int N = _N;
-    constexpr T operator[](int i) const { return t[i]; }
+    constexpr T operator[](int i) const noexcept { return t[i]; }
     static constexpr int pad = 32/sizeof(T) < 2 ? 2 : 32/sizeof(T);
     alignas(32) T t[N/2+pad];
 
@@ -116,12 +116,13 @@ struct DITTwiddle
 
     void Init()
     {
-        for (int i=0; i<=N/2; i+=2)
+        int i;
+        for (i=0; i<=N/2; i+=2)
         {
-            t[i] = -std::sin(2*M_PI*i/N);
-            t[i+1] = -std::cos(2*M_PI*i/N);
+            t[i] = std::sin(M_PI*i/N);
+            t[i+1] = std::cos(M_PI*i/N);
         }
-        for (int i=N/2; i<N/2+pad; i++)
+        for (; i<N/2+pad; i++)
             t[i] = 0;
     }
 };
@@ -130,21 +131,33 @@ struct DITTwiddle
 template <typename T>
 struct DITTwiddle<-1, T>
 {
-    constexpr const T &operator[](int i) const { return t[i]; }
+    constexpr const T &operator[](int i) const noexcept { return t[i]; }
     int N = 0;
     T *t = nullptr;
     static constexpr int pad = 32/sizeof(T) < 2 ? 2 : 32/sizeof(T);
 
     DITTwiddle() = default;
-    explicit DITTwiddle(int n) : N(n)
+    explicit DITTwiddle(int n)
     {
+        Init(n);
+    }
+
+    void Init(int n)
+    {
+        if (n == N)
+            return;
+        free(t);
+        N = n;
+        if (N == 0)
+            return;
         t = aligned_alloc_T<T>(N/2+pad, 32);
-        for (int i=0; i<=N/2; i+=2)
+        int i;
+        for (i=0; i<=N/2; i+=2)
         {
             t[i] = std::sin(M_PI*i/N);
             t[i+1] = std::cos(M_PI*i/N);
         }
-        for (int i=N/2; i<N/2+pad; i++)
+        for (; i<N/2+pad; i++)
             t[i] = 0;
     }
 

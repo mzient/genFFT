@@ -27,8 +27,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef GENFFT_FFT_H
 #define GENFFT_FFT_H
 
+#include "FFTTypes.h"
 #include "FFTDecl.h"
 #include "FFTLevel.h"
+#include "FFTDIT.h"
 #include "FFTBackend.h"
 #include <complex>
 #include <cassert>
@@ -41,9 +43,13 @@ using FFTImplPtr = std::shared_ptr<impl::FFTBase<T>>;
 template <typename T>
 using FFTVertImplPtr = std::shared_ptr<impl::FFTVertBase<T>>;
 template <typename T>
+using FFTDITImplPtr = std::shared_ptr<impl::FFTDITBase<T>>;
+template <typename T>
 using FFTImplFactory = FFTImplPtr<T>(int n, T);
 template <typename T>
 using FFTVertImplFactory = FFTVertImplPtr<T>(int n, T);
+template <typename T>
+using FFTDITImplFactory = FFTDITImplPtr<T>(int n, T);
 
 ///@brief A 1D FFT for densely packed data
 ///@tparam T scalar type
@@ -51,7 +57,7 @@ template <class T, FFTImplFactory<T> *factory = backend::GetImpl>
 struct FFT
 {
     FFT()=default;
-    FFT(int n)
+    explicit FFT(int n)
     {
         impl = factory(n, T());
         this->n = n;
@@ -98,7 +104,8 @@ struct FFT
         impl->template transform<false>((T*)out);
     }
 
-    int size() const { return n; }
+    int size() const noexcept { return n; }
+    explicit operator bool() const noexcept { return impl; }
 
 private:
     int n = 0;
@@ -111,7 +118,7 @@ template <class T, FFTVertImplFactory<T> *factory = backend::GetVertImpl>
 struct FFTVert
 {
     FFTVert()=default;
-    FFTVert(int n)
+    explicit FFTVert(int n)
     {
         impl = factory(n, T());
         this->n = n;
@@ -123,7 +130,7 @@ struct FFTVert
     ///@param stride row stride, in complex numbers, of the data array
     ///@param cols row length
     template <bool inv>
-    void transform_no_scramble(std::complex<T> *data, int stride, int cols)
+    void transform_no_scramble(std::complex<T> *data, stride_t stride, index_t cols)
     {
         impl->template transform<inv>((T*)data, 2*stride, cols);
     }
@@ -136,7 +143,7 @@ struct FFTVert
     ///@param in_stride stride, in complex numbers, of the input array
     ///@param cols row length
     template <bool inv>
-    void transform(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride, int cols)
+    void transform(std::complex<T> *out, stride_t out_stride, const std::complex<T> *in, stride_t in_stride, index_t cols)
     {
         scramble_rows((complex<T>*)out, out_stride, (const complex<T>*)in, in_stride, n, cols);
         impl->template transform<inv>((T*)out, 2*out_stride, cols);
@@ -146,22 +153,46 @@ struct FFTVert
     ///@brief Computes transform
     ///@tparam inv if true, computes inverse transform
     ///@param out output array, must not be equal to in
-    ///@param out_stride stride, in complex elements, of the output array
     ///@param in input array
-    ///@param in_stride stride, in complex elements, of the input array
     ///@param cols row length
     template <bool inv>
-    void transform(std::complex<T> *out, const std::complex<T> *in, int cols)
+    void transform(std::complex<T> *out, const std::complex<T> *in, index_t cols)
     {
         scramble_rows((complex<T>*)out, cols, (const complex<T>*)in, cols, n, cols);
         impl->template transform<inv>((T*)out, 2*cols, cols);
     }
 
-    int size() const { return n; }
+    int size() const noexcept { return n; }
+    explicit operator bool() const noexcept { return impl; }
 
 private:
     int n = 0;
     std::shared_ptr<impl::FFTVertBase<T>> impl;
+};
+
+template <class T, FFTDITImplFactory<T> *factory = backend::GetDITImpl>
+class DIT
+{
+public:
+    DIT() = default;
+    explicit DIT(int n) : n(n), impl(factory(n, T())) {}
+
+    void apply(T *out, const T *in, bool half)
+    {
+        impl->apply(out, in, half);
+    }
+
+    void apply(std::complex<T> *out, const std::complex<T> *in, bool half)
+    {
+        impl->apply((T*)out, (const T *)in, half);
+    }
+
+    int size() const noexcept { return n; }
+    explicit operator bool() const noexcept { return impl; }
+
+private:
+    int n = 0;
+    std::shared_ptr<impl::FFTDITBase<T>> impl;
 };
 
 ///@brief 2D FFT
@@ -180,21 +211,23 @@ public:
     ///@param in input array
     ///@param in_stride stride, in complex elements, of the input array
     template <bool inv>
-    void transform(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride)
+    void transform(std::complex<T> *out, stride_t out_stride, const std::complex<T> *in, stride_t in_stride)
     {
         scramble_row_fft<inv>(out, out_stride, in, in_stride, rows());
         vert.template transform_no_scramble<inv>(out, out_stride, cols());
     }
 
     ///@brief Number of columns in the domain
-    int cols() const { return horz.size(); }
+    int cols() const noexcept { return horz.size(); }
     ///@brief Number of rows in the domain
-    int rows() const { return vert.size(); }
+    int rows() const noexcept { return vert.size(); }
+
+    explicit operator bool() const noexcept { return horz && vert; }
 
 private:
 
     template <bool inv>
-    void scramble_row_fft(std::complex<T> *out, int out_stride, const std::complex<T> *in, int in_stride, int rows)
+    void scramble_row_fft(std::complex<T> *out, stride_t out_stride, const std::complex<T> *in, stride_t in_stride, index_t rows)
     {
         if (rows == 1)
         {
