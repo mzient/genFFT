@@ -1,7 +1,8 @@
 find_package(GTest REQUIRED)
 add_executable(genfft_test
-    test_dit.cpp
     test_fft.cpp
+    test_real_fft.cpp
+    test_dit.cpp
     test_dispatch.cpp
     test_reference.cpp
     test_x86.cpp

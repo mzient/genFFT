@@ -104,18 +104,18 @@ struct DITTwiddle
 
     DITTwiddle()
     {
-        Init();
+        Init(N);
     }
 
 
     explicit DITTwiddle(int n)
     {
-        assert(n == N);
-        Init();
+        Init(n);
     }
 
-    void Init()
+    void Init(int n)
     {
+        assert(n == N);
         int i;
         for (i=0; i<=N/2; i+=2)
         {

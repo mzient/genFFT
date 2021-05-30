@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Michal Zientkiewicz
+Copyright 2019-2021 Michal Zientkiewicz
 
 All rights reserved.
 
@@ -25,6 +25,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <genFFT/fft.h>
+#include "test_util.h"
 #include <gtest/gtest.h>
 #include <vector>
 #include <complex>
@@ -36,18 +37,6 @@ class FFT_float_test : public testing::TestWithParam<int>
 {
 };
 
-template <typename T>
-void DummyData(std::vector<std::complex<T>> &vec, bool real)
-{
-    std::mt19937_64 rng;
-    std::uniform_real_distribution<T> dist(-1, 1);
-
-    for (auto &c : vec)
-    {
-        c.real(dist(rng));
-        c.imag(real ? 0 : dist(rng));
-    }
-}
 
 TEST_P(FFT_float_test, InverseIdentity)
 {

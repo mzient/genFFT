@@ -26,45 +26,44 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <genFFT/fft.h>
 #include <gtest/gtest.h>
+#include "fft_test_impl.h"
 #include <vector>
 #include <complex>
 #include <random>
-#include "test_util.h"
-#include "fft_test_impl.h"
 
 namespace {
 
-///////////////////////////////////////////////////////////////
-// DIT test
-
-class FFT_DIT_test_pow2 : public testing::TestWithParam<std::tuple<int, bool>>
+class FFT_real_test : public testing::TestWithParam<std::tuple<int, bool>>
 {
 };
 
 
-TEST_P(FFT_DIT_test_pow2, float)
+
+TEST_P(FFT_real_test, Pow2_float)
 {
-    std::tuple<int, bool> param = GetParam();
-    TestDIT_Pow2<float>(std::get<0>(param), std::get<1>(param));
+    int n;
+    bool half;
+    std::tie(n, half) = GetParam();
+    TestRealFFT_Pow2<float>(n, half);
 }
 
-TEST_P(FFT_DIT_test_pow2, double)
+TEST_P(FFT_real_test, Pow2_double)
 {
-    std::tuple<int, bool> param = GetParam();
-    TestDIT_Pow2<double>(std::get<0>(param), std::get<1>(param));
+    int n;
+    bool half;
+    std::tie(n, half) = GetParam();
+    TestRealFFT_Pow2<double>(n, half);
 }
 
-auto DIT_Sizes_InPlace = testing::Combine(
-        ::testing::Values(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
-                          1<<14, 1<<15, 1<<16, 1<<17, 1<<18, 1<<19, 1<<20),
-        ::testing::Values(false, true)
-    );
+auto FFTReal_SizeHalf = ::testing::Combine(
+    ::testing::Values(2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
+                      1<<14, 1<<15, 1<<16, 1<<17, 1<<18, 1<<19, 1<<20, 1<<21, 1<<22),
+    ::testing::Values(false, true));
 
 INSTANTIATE_TEST_CASE_P(
-    FFT_DIT_pow2,
-    FFT_DIT_test_pow2,
-    DIT_Sizes_InPlace
+    RealFFT,
+    FFT_real_test,
+    FFTReal_SizeHalf
 );
-
 
 } // namespace

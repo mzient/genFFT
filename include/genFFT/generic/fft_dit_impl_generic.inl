@@ -68,7 +68,7 @@ struct FFTDIT : impl::FFTDITBase<T>
     {
         assert(n == N || N < 0);
         this->n = n;
-        twiddle  = genfft::DITTwiddle<N, T>(n);
+        twiddle.Init(n);
     }
 
     void apply(T *F, const T *Z, bool half) const noexcept override
@@ -117,7 +117,7 @@ std::weak_ptr<impl::FFTDITBase<T>> FFTDIT<N, T>::instance;
 template <class T>
 inline std::shared_ptr<impl::FFTDITBase<T>> GetDITImpl(int n, T)
 {
-    assert((n & 3) == 0 && "n must be divisible by 4");
+    assert(((n & 1) == 0 || n == 1 || n == 2) && "n must be divisible by 4 or equal to 1 or 2");
     switch (n)
     {
         // Use cached variants for some powers of 2

@@ -75,6 +75,42 @@ static void FFT_1D(benchmark::State &state)
     std::cerr << "Average error: " << err / niter << "\n";
 }
 
+volatile double g_err = 0;
+
+static void RealFFT_1D(benchmark::State &state)
+{
+    std::mt19937_64 rng;
+    std::uniform_real_distribution<float> dist(-1, 1);
+
+    int n = state.range(0);
+    std::vector<float> in(n);
+    std::vector<std::complex<float>> out(n);
+
+    genfft::RealFFT<float> fft(n);
+    float den = 1.0f/n;
+    double err = 0;
+    int niter = 0;
+
+    for (auto &r : in)
+        r = dist(rng);
+    fft.forward(out.data(), in.data(), true);
+
+    for (auto _ : state)
+    {
+        for (auto &r : in)
+            r = dist(rng);
+        auto start = perf_timer::now();
+        fft.forward(out.data(), in.data(), true);
+        auto end = perf_timer::now();
+        double t = seconds(start, end);
+        state.SetIterationTime(t);
+        niter++;
+        for (int i = 0; i < n; i++)
+            g_err += std::abs(out[i]);
+    }
+}
+
+
 static void FFT_Vert(benchmark::State &state)
 {
     std::mt19937_64 rng;
@@ -120,6 +156,9 @@ static void FFT_Vert(benchmark::State &state)
 
 
 BENCHMARK(FFT_1D)
+    ->UseManualTime()->RangeMultiplier(2)->Range(2, 2<<20);
+
+BENCHMARK(RealFFT_1D)
     ->UseManualTime()->RangeMultiplier(2)->Range(2, 2<<20);
 
 static void FFTVertArgs(benchmark::internal::Benchmark* b)

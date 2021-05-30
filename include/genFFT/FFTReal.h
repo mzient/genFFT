@@ -206,7 +206,8 @@ struct RealFFT
         if (n == 1) {
             out[0] = in[0];
         } else {
-            impl->template transform<false>((T*)out, in);
+            scramble((complex<T> *)out, (const complex<T>*)in, n / 2);
+            impl->forward((T*)out);
             dit->apply((T*)out, (T*)out, half);
         }
     }

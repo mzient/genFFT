@@ -29,6 +29,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef FFT_TEST_IMPL_H
 #define FFT_TEST_IMPL_H
 
+#include "test_util.h"
+#include "fft_ref_impl.h"
+
 template <typename T>
 void TestFFT_Pow2(int n)
 {
@@ -55,6 +58,54 @@ void TestFFT_Pow2(int n)
 }
 
 template <typename T>
+void TestDIT_Pow2(int n, bool in_place)
+{
+    std::vector<T> real_input(n);
+    std::vector<std::complex<T>> complex_input(n), out_half(n), out1(n), out2(n), out3(n);
+    DummyData(real_input);
+    for (int i = 0; i < n; i++)
+        complex_input[i] = real_input[i];
+
+    genfft::FFT<T> half_fft(n == 1 ? 1 : n/2);
+    genfft::FFT<T> full_fft(n);
+    half_fft.template transform<false>(out1.data(), (std::complex<T>*)real_input.data());
+    full_fft.template transform<false>(out2.data(), complex_input.data());
+    genfft::DIT<T> dit(n);
+    std::complex<T> *out_ptr = in_place ? out1.data() : out3.data();
+    dit.apply(out_ptr, out1.data(), false);
+    const T eps = FFT_Eps<T>(n);
+    for (int i = 0; i < n; i++)
+    {
+        EXPECT_NEAR(out_ptr[i].real(), out2[i].real(), eps) << " @ " << i;
+        EXPECT_NEAR(out_ptr[i].imag(), out2[i].imag(), eps) << " @ " << i;
+    }
+}
+
+template <typename T>
+void TestRealFFT_Pow2(int n, bool half)
+{
+    genfft::RealFFT<T> fft(n);
+    std::complex<T> fill = { 43, 21 };
+    std::vector<std::complex<T>> out(n, fill), ref_out(n);
+    std::vector<T> in(n);
+    DummyData(in);
+    fft.forward(out.data(), in.data(), half);
+    reference_impl::FFT_pow2(ref_out.data(), in.data(), n, false);
+    const T eps = FFT_Eps<T>(n);
+    int limit = half ? n/2 + 1 : n;
+    int i;
+    for (i = 0; i < limit; i++)
+    {
+        ASSERT_NEAR(out[i].real(), ref_out[i].real(), eps) << " i = " << i;
+        ASSERT_NEAR(out[i].imag(), ref_out[i].imag(), eps) << " i = " << i;
+    }
+    for (; i < n; i++)
+    {
+        ASSERT_EQ(out[i], fill) << "Corruption detected @ index " << i;
+    }
+}
+
+template <typename T>
 void TestFFTVert_Pow2(int n, int cols)
 {
     genfft::FFTVert<T> fft(n);
@@ -76,31 +127,6 @@ void TestFFTVert_Pow2(int n, int cols)
         ASSERT_NEAR(inv_x.real(), ref_inv_x.real(), eps) << " i = " << i;
         ASSERT_NEAR(inv_x.imag(), ref_inv_x.imag(), eps) << " i = " << i;
         ASSERT_NEAR(inv_x.real(), in[i].real(), eps) << " i = " << i;
-    }
-}
-
-template <typename T>
-void TestDIT_Pow2(int n, bool in_place)
-{
-    int N = 1024;
-    std::vector<T> real_input(N);
-    std::vector<std::complex<T>> complex_input(N), out_half(N), out1(N), out2(N), out3(N);
-    DummyData(real_input);
-    for (int i = 0; i < N; i++)
-        complex_input[i] = real_input[i];
-
-    genfft::FFT<T> half_fft(N == 1 ? 1 : N/2);
-    genfft::FFT<T> full_fft(N);
-    half_fft.template transform<false>(out1.data(), (std::complex<T>*)real_input.data());
-    full_fft.template transform<false>(out2.data(), complex_input.data());
-    genfft::DIT<T> dit(N);
-    std::complex<T> *out_ptr = in_place ? out1.data() : out3.data();
-    dit.apply(out_ptr, out1.data(), false);
-    const T eps = FFT_Eps<T>(n);
-    for (int i = 0; i < N; i++)
-    {
-        EXPECT_NEAR(out_ptr[i].real(), out2[i].real(), eps) << " @ " << i;
-        EXPECT_NEAR(out_ptr[i].imag(), out2[i].imag(), eps) << " @ " << i;
     }
 }
 
