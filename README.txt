@@ -10,6 +10,18 @@ as such, should be used at least with -O2 flag or equivalent.
 The library features x86 SIMD backends for both single- and double-precision numbers.
 Currently it only supports power-of-two sizes.
 
+The library can be used in one of 2 ways:
+1. Native (header-only)
+2. Dispatch (prebuilt)
+
+Native variant is easy to integrate. It is the recommended variant for code running
+on development machine or when the target architecture is known.
+
+Dispatch mode builds the library with various CPU extensions on or off and the
+actual implementation is chosen at run-time on the client machine. This variant
+is useful for binary distribution.
+
+
 Usage:
 #include <genFFT/fft.h>
 
@@ -36,9 +48,8 @@ A: I don't know. It's only been tested with g++ 5x and clang 3.8; comments on
 Q: Do you intend to add support for <enter architecture name here>
 A: Not in foreseeable future.
 
-Q: Do you plan to add half-spectrum FFT for real data?
-A: Maybe :)
-
+Q: Do you plan to add half-spectrum inverse FFT for real data?
+A: Maybe
 
 Copyright (c) 2017-2019 Michal Zientkiewicz
 See license.txt for details.
